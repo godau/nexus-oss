@@ -94,7 +94,7 @@ Ext.define('NX.app.Application', {
   },
 
   initDirect: function () {
-    Ext.Direct.addProvider(NX.direct.api.REMOTING_API);
+    //Ext.Direct.addProvider(NX.direct.api.REMOTING_API);
     this.logDebug('Configured direct');
   },
 

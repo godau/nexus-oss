@@ -32,10 +32,9 @@ import org.sonatype.nexus.rapture.direct.Response;
 import org.sonatype.nexus.rest.RepositoryURLBuilder;
 import org.sonatype.nexus.ux.model.RepositoryInfoUX;
 
+import com.director.core.annotation.DirectMethod;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
-import com.softwarementors.extjs.djn.config.annotations.DirectAction;
-import com.softwarementors.extjs.djn.config.annotations.DirectMethod;
 
 import static org.sonatype.nexus.rapture.direct.Responses.error;
 import static org.sonatype.nexus.rapture.direct.Responses.success;
@@ -47,7 +46,6 @@ import static org.sonatype.nexus.rapture.direct.Responses.success;
  */
 @Named
 @Singleton
-@DirectAction(action = "Repository")
 public class RepositoryDirectResource
     implements DirectResource
 {

@@ -40,14 +40,13 @@ import org.sonatype.nexus.rapture.direct.DirectResource;
 import org.sonatype.nexus.rapture.direct.Response;
 import org.sonatype.sisu.goodies.common.ComponentSupport;
 
+import com.director.core.annotation.DirectMethod;
 import com.google.common.base.Function;
 import com.google.common.base.Predicates;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.softwarementors.extjs.djn.config.annotations.DirectAction;
-import com.softwarementors.extjs.djn.config.annotations.DirectMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,7 +65,6 @@ import static org.sonatype.nexus.rapture.direct.Responses.success;
  */
 @Named
 @Singleton
-@DirectAction(action = "Capability")
 public class CapabilityDirectResource
     extends ComponentSupport
     implements DirectResource

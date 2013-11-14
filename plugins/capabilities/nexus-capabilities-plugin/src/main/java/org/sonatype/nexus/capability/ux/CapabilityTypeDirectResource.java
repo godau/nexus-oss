@@ -29,10 +29,9 @@ import org.sonatype.nexus.plugins.capabilities.CapabilityDescriptorRegistry;
 import org.sonatype.nexus.rapture.direct.DirectResource;
 import org.sonatype.nexus.rapture.direct.Response;
 
+import com.director.core.annotation.DirectMethod;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
-import com.softwarementors.extjs.djn.config.annotations.DirectAction;
-import com.softwarementors.extjs.djn.config.annotations.DirectMethod;
 
 import static org.sonatype.nexus.rapture.direct.Responses.error;
 import static org.sonatype.nexus.rapture.direct.Responses.success;
@@ -44,7 +43,6 @@ import static org.sonatype.nexus.rapture.direct.Responses.success;
  */
 @Named
 @Singleton
-@DirectAction(action = "CapabilityType")
 public class CapabilityTypeDirectResource
     implements DirectResource
 {

@@ -22,8 +22,7 @@ import org.sonatype.nexus.rapture.direct.DirectResource;
 import org.sonatype.nexus.rapture.direct.Response;
 import org.sonatype.sisu.goodies.common.ComponentSupport;
 
-import com.softwarementors.extjs.djn.config.annotations.DirectAction;
-import com.softwarementors.extjs.djn.config.annotations.DirectMethod;
+import com.director.core.annotation.DirectMethod;
 
 import static org.sonatype.nexus.rapture.direct.Responses.error;
 import static org.sonatype.nexus.rapture.direct.Responses.success;
@@ -35,7 +34,6 @@ import static org.sonatype.nexus.rapture.direct.Responses.success;
  */
 @Named
 @Singleton
-@DirectAction(action = "PluginConsole")
 public class PluginConsoleDirectResource
     extends ComponentSupport
     implements DirectResource

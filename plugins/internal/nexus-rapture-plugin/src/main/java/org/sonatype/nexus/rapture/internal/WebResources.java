@@ -1,10 +1,8 @@
 package org.sonatype.nexus.rapture.internal;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -15,13 +13,11 @@ import javax.inject.Named;
 import javax.inject.Singleton;
 
 import org.sonatype.nexus.configuration.application.ApplicationConfiguration;
-import org.sonatype.nexus.plugins.rest.DefaultStaticResource;
 import org.sonatype.nexus.plugins.rest.NexusResourceBundle;
 import org.sonatype.nexus.plugins.rest.StaticResource;
 import org.sonatype.sisu.goodies.template.TemplateEngine;
 import org.sonatype.sisu.goodies.template.TemplateParameters;
 
-import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,25 +55,9 @@ public class WebResources
 
   @Override
   public List<StaticResource> getContributedResouces() {
-    return Arrays.asList(
-        new AppJs(),
-        directjngine()
+    return Arrays.<StaticResource>asList(
+        new AppJs()
     );
-  }
-
-  /**
-   * FIXME: please document what this is for and why its needed.
-   */
-  private StaticResource directjngine() {
-    try {
-      File file = new File(applicationConfiguration.getTemporaryDirectory(), "djn/Nexus-debug.js");
-      return new DefaultStaticResource(
-          file.toURI().toURL(), "/static/rapture/app-direct-debug.js", "application/x-javascript"
-      );
-    }
-    catch (MalformedURLException e) {
-      throw Throwables.propagate(e);
-    }
   }
 
   // FIXME: Add index.html generation here too
