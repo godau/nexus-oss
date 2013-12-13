@@ -55,10 +55,8 @@ public abstract class LdapSchemaTestSupport
   public void setUp()
       throws Exception
   {
-    assertNotNull(lookup(LdapConfiguration.class));
-
     super.setUp();
-
+    assertNotNull(lookup(LdapConfiguration.class));
     this.realm = this.lookup(Realm.class, "LdapAuthenticatingRealm");
     this.ldapManager = this.lookup(LdapManager.class);
   }
@@ -164,27 +162,27 @@ public abstract class LdapSchemaTestSupport
   public void testSearch()
       throws LdapDAOException
   {
-    Set<LdapUser> users = this.ldapManager.searchUsers("cstamas");
+    Set<LdapUser> users = this.ldapManager.searchUsers("cstamas", null);
     assertEquals(1, users.size());
     LdapUser user = users.iterator().next();
     assertEquals("cstamas", user.getUsername());
     assertTrue(this.isPasswordsEncrypted() || ("cstamas123".equals(user.getPassword())));
 
-    users = this.ldapManager.searchUsers("br");
+    users = this.ldapManager.searchUsers("br", null);
     assertEquals(1, users.size());
     user = users.iterator().next();
     assertEquals("brianf", user.getUsername());
     // assertEquals( "Brian Fox", user.getRealName() );
     assertTrue(this.isPasswordsEncrypted() || ("brianf123".equals(user.getPassword())));
 
-    users = this.ldapManager.searchUsers("j");
+    users = this.ldapManager.searchUsers("j", null);
     assertEquals(1, users.size());
     user = users.iterator().next();
     assertEquals("jvanzyl", user.getUsername());
     // assertEquals( "Jason Van Zyl", user.getRealName() );
     assertTrue(this.isPasswordsEncrypted() || ("jvanzyl123".equals(user.getPassword())));
 
-    users = this.ldapManager.searchUsers("INVALID");
+    users = this.ldapManager.searchUsers("INVALID", null);
     assertEquals(0, users.size());
   }
 

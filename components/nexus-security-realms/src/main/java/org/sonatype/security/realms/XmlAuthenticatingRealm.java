@@ -18,7 +18,6 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 
-import org.sonatype.inject.Description;
 import org.sonatype.security.model.CUser;
 import org.sonatype.security.realms.tools.ConfigurationManager;
 import org.sonatype.security.realms.tools.ConfigurationManagerAction;
@@ -39,6 +38,7 @@ import org.apache.shiro.authz.AuthorizationInfo;
 import org.apache.shiro.realm.AuthorizingRealm;
 import org.apache.shiro.realm.Realm;
 import org.apache.shiro.subject.PrincipalCollection;
+import org.eclipse.sisu.Description;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +57,7 @@ public class XmlAuthenticatingRealm
     extends AuthorizingRealm
     implements Realm
 {
-  private final Logger logger = LoggerFactory.getLogger(getClass());
+  private static final Logger logger = LoggerFactory.getLogger(XmlAuthenticatingRealm.class);
 
   public static final String ROLE = "XmlAuthenticatingRealm";
 
@@ -121,11 +121,6 @@ public class XmlAuthenticatingRealm
     return null;
   }
 
-  public ConfigurationManager getConfigurationManager() {
-    return configuration;
-  }
-
-
   /*
    * Re-hash user password, and persist changes
    *
@@ -151,7 +146,7 @@ public class XmlAuthenticatingRealm
           catch (Exception e) {
             //Update failed, rollback to previous values
             user.setPassword(currentPasswordHash);
-            logger.error("Unable to update hash for user {}", user.getId());
+            logger.error("Unable to update hash for user {}", user.getId(), e);
           }
         }
       });

@@ -14,6 +14,7 @@
 package org.sonatype.nexus.proxy.storage.local.fs;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -46,9 +47,9 @@ import org.sonatype.nexus.proxy.walker.WalkerException;
 import org.sonatype.nexus.proxy.wastebasket.Wastebasket;
 
 import com.google.common.primitives.Ints;
+import org.apache.commons.io.FileUtils;
 import org.codehaus.plexus.PlexusContainer;
 import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
-import org.codehaus.plexus.util.FileUtils;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.junit.Test;
 
@@ -144,10 +145,9 @@ public class NEXUS5612DefaultFSLocalRepositoryStorageTest
       throws Exception
   {
     // prepare a repo to walk, copy some stuff under local storage
-    FileUtils.copyDirectoryStructure(getTestFile("target/test-classes/repo1"), localStorageDirectory);
+    FileUtils.copyDirectory(getTestFile("target/test-classes/repo1"), localStorageDirectory);
     // count the existing files
-    final int filesInRepo =
-        Ints.checkedCast(org.sonatype.nexus.util.FileUtils.fileSizesInDirectory(localStorageDirectory));
+    final int filesInRepo = Ints.checkedCast(fileSizesInDirectory(localStorageDirectory));
 
     // list of parents that will crack
     final List<String> minedParents = Collections.singletonList("/activemq/activemq-core/1.2");
@@ -206,4 +206,47 @@ public class NEXUS5612DefaultFSLocalRepositoryStorageTest
       }
     }
   }
+
+  /**
+   * Recursively sum file sizes in a directory.
+   *
+   * @return count of files in directory.
+   */
+  private static long fileSizesInDirectory(final File directory)
+      throws IllegalArgumentException
+  {
+    if (!directory.exists()) {
+      final String message = directory + " does not exist";
+      throw new IllegalArgumentException(message);
+    }
+
+    if (!directory.isDirectory()) {
+      final String message = directory + " is not a directory";
+      throw new IllegalArgumentException(message);
+    }
+
+    return fileSizesInDirectorySilently(directory, null);
+  }
+
+  private static long fileSizesInDirectorySilently(final File directory, final FileFilter filter) {
+    long size = 0;
+
+    final File[] files = directory.listFiles(filter);
+
+    if (files != null) {
+      for (int i = 0; i < files.length; i++) {
+        final File file = files[i];
+
+        if (file.isDirectory()) {
+          size += fileSizesInDirectorySilently(file, filter);
+        }
+        else {
+          size += file.length();
+        }
+      }
+    }
+
+    return size;
+  }
+
 }

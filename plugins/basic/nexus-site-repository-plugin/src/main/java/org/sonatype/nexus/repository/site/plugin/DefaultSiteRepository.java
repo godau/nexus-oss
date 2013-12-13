@@ -13,9 +13,6 @@
 
 package org.sonatype.nexus.repository.site.plugin;
 
-import java.io.IOException;
-import java.io.InputStream;
-
 import javax.inject.Inject;
 import javax.inject.Named;
 
@@ -33,7 +30,6 @@ import org.sonatype.nexus.proxy.repository.RepositoryKind;
 import org.sonatype.nexus.proxy.repository.WebSiteRepository;
 import org.sonatype.nexus.proxy.storage.UnsupportedStorageOperationException;
 
-import org.codehaus.plexus.util.FileUtils;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -76,12 +72,6 @@ public class DefaultSiteRepository
     return repositoryKind;
   }
 
-  public void deploySiteBundle(String prefix, InputStream bundle)
-      throws IOException
-  {
-    throw new UnsupportedOperationException("Deploy of the bundle is not yet implemented!");
-  }
-
   @Override
   protected CRepositoryExternalConfigurationHolderFactory<DefaultSiteRepositoryConfiguration> getExternalConfigurationHolderFactory() {
     return new CRepositoryExternalConfigurationHolderFactory<DefaultSiteRepositoryConfiguration>()
@@ -103,11 +93,67 @@ public class DefaultSiteRepository
   {
     // strip the '.' from the path
     if (AbstractStorageItem.class.isAssignableFrom(item.getClass())) {
-      String normalizedPath = FileUtils.normalize(item.getPath());
+      String normalizedPath = normalize(item.getPath());
       AbstractStorageItem fileItem = (AbstractStorageItem) item;
       fileItem.setPath(normalizedPath);
     }
 
     super.storeItem(fromTask, item);
   }
+
+  /**
+   * Normalize a path.
+   * Eliminates "/../" and "/./" in a string. Returns <code>null</code> if the ..'s went past the
+   * root.
+   * Eg:
+   * <pre>
+   * /foo//               -->     /foo/
+   * /foo/./              -->     /foo/
+   * /foo/../bar          -->     /bar
+   * /foo/../bar/         -->     /bar/
+   * /foo/../bar/../baz   -->     /baz
+   * //foo//./bar         -->     /foo/bar
+   * /../                 -->     null
+   * </pre>
+   *
+   * @param path the path to normalize
+   * @return the normalized String, or <code>null</code> if too many ..'s.
+   */
+  private static String normalize(final String path) {
+    String normalized = path;
+    // Resolve occurrences of "//" in the normalized path
+    while (true) {
+      int index = normalized.indexOf("//");
+      if (index < 0) {
+        break;
+      }
+      normalized = normalized.substring(0, index) + normalized.substring(index + 1);
+    }
+
+    // Resolve occurrences of "/./" in the normalized path
+    while (true) {
+      int index = normalized.indexOf("/./");
+      if (index < 0) {
+        break;
+      }
+      normalized = normalized.substring(0, index) + normalized.substring(index + 2);
+    }
+
+    // Resolve occurrences of "/../" in the normalized path
+    while (true) {
+      int index = normalized.indexOf("/../");
+      if (index < 0) {
+        break;
+      }
+      if (index == 0) {
+        return null;  // Trying to go outside our context
+      }
+      int index2 = normalized.lastIndexOf('/', index - 1);
+      normalized = normalized.substring(0, index2) + normalized.substring(index + 3);
+    }
+
+    // Return the normalized path that we have completed
+    return normalized;
+  }
+
 }

@@ -13,37 +13,29 @@
 
 package org.sonatype.nexus.proxy.attributes;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.ArrayList;
 import java.util.List;
 
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 
-import org.sonatype.nexus.configuration.application.ApplicationConfiguration;
-import org.sonatype.nexus.logging.AbstractLoggingComponent;
 import org.sonatype.nexus.proxy.ResourceStoreRequest;
 import org.sonatype.nexus.proxy.access.AccessManager;
 import org.sonatype.nexus.proxy.item.ContentLocator;
-import org.sonatype.nexus.proxy.item.FileContentLocator;
 import org.sonatype.nexus.proxy.item.RepositoryItemUid;
 import org.sonatype.nexus.proxy.item.StorageCollectionItem;
 import org.sonatype.nexus.proxy.item.StorageFileItem;
 import org.sonatype.nexus.proxy.item.StorageItem;
+import org.sonatype.nexus.proxy.item.uid.IsMetadataMaintainedAttribute;
 import org.sonatype.nexus.proxy.repository.HostedRepository;
 import org.sonatype.nexus.proxy.repository.ProxyRepository;
 import org.sonatype.nexus.proxy.repository.Repository;
 import org.sonatype.nexus.proxy.repository.RepositoryKind;
 import org.sonatype.nexus.util.SystemPropertiesHelper;
+import org.sonatype.sisu.goodies.common.ComponentSupport;
 
-import com.google.common.annotations.VisibleForTesting;
-
-import org.codehaus.plexus.util.IOUtil;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * The default implementation of AttributesHandler. Does not have any assumption regarding actual AttributeStorage it
@@ -56,7 +48,7 @@ import org.codehaus.plexus.util.IOUtil;
 @Named
 @Singleton
 public class DefaultAttributesHandler
-    extends AbstractLoggingComponent
+    extends ComponentSupport
     implements AttributesHandler
 {
 
@@ -94,55 +86,27 @@ public class DefaultAttributesHandler
       LAST_REQUEST_ATTRIBUTE_ENABLED);
 
   /**
-   * The actual value of lastRequest attribute's resolution.
+   * The actual value of lastRequest attribute's resolution. Note: is not final due to UT access, see
+   * setter method that is visible for testing.
    */
   private long lastRequestedResolution = LAST_REQUESTED_ATTRIBUTE_RESOLUTION;
 
   /**
-   * The application configuration.
-   */
-  private ApplicationConfiguration applicationConfiguration;
-
-  /**
    * The attribute storage.
    */
-  private DelegatingAttributeStorage attributeStorage;
+  private final AttributeStorage attributeStorage;
 
   /**
    * The item inspector list.
    */
-  protected List<StorageItemInspector> itemInspectorList;
-
-  /**
-   * The item inspector list.
-   */
-  protected List<StorageFileItemInspector> fileItemInspectorList;
+  private final List<StorageItemInspector> itemInspectorList;
 
   @Inject
-  public DefaultAttributesHandler(ApplicationConfiguration applicationConfiguration,
-                                  @Named("ls") AttributeStorage attributeStorage,
-                                  @Named("legacy") AttributeStorage legacyAttributeStorage,
-                                  List<StorageItemInspector> itemInspectorList,
-                                  List<StorageFileItemInspector> fileItemInspectorList)
+  public DefaultAttributesHandler(@Named("ls") AttributeStorage attributeStorage,
+                                  List<StorageItemInspector> itemInspectorList)
   {
-    this.applicationConfiguration = applicationConfiguration;
-
-    // do we need to waste CPU cycles at "transitioning" at all? Should not, ie, for new instances
-    if (legacyAttributeStorage != null
-        && ((LegacyFSAttributeStorage) legacyAttributeStorage).isLegacyAttributeStorageDiscovered()) {
-      this.attributeStorage =
-          new DelegatingAttributeStorage(new TransitioningAttributeStorage(attributeStorage,
-              legacyAttributeStorage));
-
-      getLogger().info(
-          "Legacy AttributeStorage directory exists here \"{}\", transitioning them on-the-fly as they are used to repository storage.",
-          ((LegacyFSAttributeStorage) legacyAttributeStorage).getWorkingDirectory());
-    }
-    else {
-      this.attributeStorage = new DelegatingAttributeStorage(attributeStorage);
-    }
-    this.itemInspectorList = itemInspectorList;
-    this.fileItemInspectorList = fileItemInspectorList;
+    this.attributeStorage = checkNotNull(attributeStorage);
+    this.itemInspectorList = checkNotNull(itemInspectorList);
   }
 
   // ==
@@ -152,7 +116,7 @@ public class DefaultAttributesHandler
    *
    * @return the attribute storage
    */
-  public DelegatingAttributeStorage getAttributeStorage() {
+  public AttributeStorage getAttributeStorage() {
     return attributeStorage;
   }
 
@@ -165,33 +129,6 @@ public class DefaultAttributesHandler
     return itemInspectorList;
   }
 
-  /**
-   * Sets the item inspector list.
-   *
-   * @param itemInspectorList the new item inspector list
-   */
-  public void setItemInspectorList(List<StorageItemInspector> itemInspectorList) {
-    this.itemInspectorList = itemInspectorList;
-  }
-
-  /**
-   * Gets the file item inspector list.
-   *
-   * @return the file item inspector list
-   */
-  public List<StorageFileItemInspector> getFileItemInspectorList() {
-    return fileItemInspectorList;
-  }
-
-  /**
-   * Sets the file item inspector list.
-   *
-   * @param fileItemInspectorList the new file item inspector list
-   */
-  public void setFileItemInspectorList(List<StorageFileItemInspector> fileItemInspectorList) {
-    this.fileItemInspectorList = fileItemInspectorList;
-  }
-
   // ======================================================================
   // AttributesHandler iface
 
@@ -199,15 +136,19 @@ public class DefaultAttributesHandler
   public boolean deleteAttributes(final RepositoryItemUid uid)
       throws IOException
   {
-    return getAttributeStorage().deleteAttributes(uid);
+    if (!isMetadataMaintained(uid)) {
+      return false;
+    }
+    else {
+      return getAttributeStorage().deleteAttributes(uid);
+    }
   }
 
   @Override
   public void fetchAttributes(final StorageItem item)
       throws IOException
   {
-    if (item instanceof StorageCollectionItem) {
-      // not storing attributes of directories
+    if (!isMetadataMaintained(item)) {
       return;
     }
 
@@ -218,13 +159,10 @@ public class DefaultAttributesHandler
     }
     else {
       // we are fixing md if we can
-
       ContentLocator is = null;
-
-      if (StorageFileItem.class.isAssignableFrom(item.getClass())) {
-        if (((StorageFileItem) item).getContentLocator().isReusable()) {
-          is = ((StorageFileItem) item).getContentLocator();
-        }
+      if (item instanceof StorageFileItem &&
+          ((StorageFileItem) item).getContentLocator().isReusable()) {
+        is = ((StorageFileItem) item).getContentLocator();
       }
 
       storeAttributes(item, is);
@@ -235,8 +173,7 @@ public class DefaultAttributesHandler
   public void storeAttributes(final StorageItem item)
       throws IOException
   {
-    if (item instanceof StorageCollectionItem) {
-      // not storing attributes of directories
+    if (!isMetadataMaintained(item)) {
       return;
     }
 
@@ -247,8 +184,7 @@ public class DefaultAttributesHandler
   public void storeAttributes(final StorageItem item, final ContentLocator content)
       throws IOException
   {
-    if (item instanceof StorageCollectionItem) {
-      // not storing attributes of directories
+    if (!isMetadataMaintained(item)) {
       return;
     }
 
@@ -275,8 +211,7 @@ public class DefaultAttributesHandler
   public void touchItemCheckedRemotely(final long timestamp, final StorageItem storageItem)
       throws IOException
   {
-    if (storageItem instanceof StorageCollectionItem) {
-      // not storing attributes of directories
+    if (!isMetadataMaintained(storageItem)) {
       return;
     }
 
@@ -297,8 +232,7 @@ public class DefaultAttributesHandler
   public void touchItemLastRequested(final long timestamp, final StorageItem storageItem)
       throws IOException
   {
-    if (storageItem instanceof StorageCollectionItem) {
-      // not storing attributes of directories
+    if (!isMetadataMaintained(storageItem)) {
       return;
     }
 
@@ -306,7 +240,33 @@ public class DefaultAttributesHandler
         storageItem.getRepositoryItemAttributes());
   }
 
-  // ==
+  // ======================================================================
+  // Internal
+
+  protected boolean isMetadataMaintained(final StorageItem item) {
+    if (item instanceof StorageCollectionItem) {
+      // not storing attributes of directories
+      return false;
+    }
+    else if (item.isVirtual()) {
+      // virtual items have no attributes (nor UID for that matter)
+      return false;
+    }
+    else {
+      return isMetadataMaintained(item.getRepositoryItemUid());
+    }
+  }
+
+  protected boolean isMetadataMaintained(final RepositoryItemUid uid) {
+    final Boolean isMetadataMaintained = uid.getAttributeValue(IsMetadataMaintainedAttribute.class);
+    if (isMetadataMaintained != null) {
+      return isMetadataMaintained.booleanValue();
+    }
+    else {
+      // safest
+      return true;
+    }
+  }
 
   protected void touchItemLastRequested(final long timestamp, final ResourceStoreRequest request,
                                         final RepositoryItemUid uid, final Attributes attributes)
@@ -361,119 +321,25 @@ public class DefaultAttributesHandler
     return doTouch;
   }
 
-  // ======================================================================
-  // Internal
-
   /**
-   * Expand custom item attributes using registered StorageFileItemInspector (for files) or StorageItemInspector (for
-   * everything else) components.
+   * Method that expands core (and custom if custom inspector exists, like provided by a plugin) item attributes on
+   * files having attributes maintained. This method may be called ONLY if {@link #isMetadataMaintained(StorageItem)}
+   * returns {@code true} and the content locator passed in is reusable. Currently this method is invoked only from
+   * {@link #storeAttributes(StorageItem, ContentLocator)} method.
    *
    * @param item    the item
-   * @param content the input stream
+   * @param content the reusable content locator
    */
-  protected void expandCustomItemAttributes(StorageItem item, ContentLocator content) {
-    // gather inspectors willing to participate first, to save file copying below
-    ArrayList<StorageFileItemInspector> handlingInspectors = new ArrayList<StorageFileItemInspector>();
-    for (StorageFileItemInspector inspector : getFileItemInspectorList()) {
+  protected void expandCustomItemAttributes(final StorageItem item, final ContentLocator content) {
+    for (StorageItemInspector inspector : getItemInspectorList()) {
       if (inspector.isHandled(item)) {
-        handlingInspectors.add(inspector);
-      }
-    }
-
-    if (handlingInspectors.isEmpty()) {
-      return;
-    }
-
-    boolean deleteTmpFile = false;
-    File tmpFile = null;
-
-    if (content != null) {
-      if (content instanceof FileContentLocator) {
-        deleteTmpFile = false;
-        tmpFile = ((FileContentLocator) content).getFile();
-      }
-      else {
-        getLogger().info(
-            "Doing a temporary copy of the \""
-                + item.getPath()
-                +
-                "\" item's content for expanding custom attributes. This should NOT happen, but is left in as \"fallback\"!");
-
-        deleteTmpFile = true;
-
         try {
-          InputStream inputStream = null;
-          OutputStream tmpFileStream = null;
-
-          try {
-            // unpack the file
-            tmpFile =
-                File.createTempFile("px-" + item.getName(), ".tmp",
-                    applicationConfiguration.getTemporaryDirectory());
-
-            inputStream = content.getContent();
-
-            tmpFileStream = new FileOutputStream(tmpFile);
-
-            IOUtil.copy(inputStream, tmpFileStream);
-
-            tmpFileStream.flush();
-
-            tmpFileStream.close();
-          }
-          finally {
-            IOUtil.close(inputStream);
-
-            IOUtil.close(tmpFileStream);
-          }
+          inspector.processStorageItem(item);
         }
-        catch (IOException ex) {
-          getLogger().warn("Could not create file from " + item.getRepositoryItemUid(), ex);
-
-          tmpFile = null;
-        }
-      }
-    }
-
-    if (StorageFileItem.class.isAssignableFrom(item.getClass())) {
-      StorageFileItem fItem = (StorageFileItem) item;
-
-      if (!fItem.isVirtual() && tmpFile != null) {
-        try {
-          // we should prepare a file for inspectors
-          for (StorageFileItemInspector inspector : handlingInspectors) {
-            if (inspector.isHandled(item)) {
-              try {
-                inspector.processStorageFileItem(fItem, tmpFile);
-              }
-              catch (Exception ex) {
-                getLogger().warn(
-                    "Inspector " + inspector.getClass() + " throw exception during inspection of "
-                        + item.getRepositoryItemUid() + ", continuing...", ex);
-              }
-            }
-          }
-        }
-        finally {
-          if (deleteTmpFile && tmpFile != null) {
-            tmpFile.delete();
-          }
-
-          tmpFile = null;
-        }
-      }
-    }
-    else {
-      for (StorageItemInspector inspector : getItemInspectorList()) {
-        if (inspector.isHandled(item)) {
-          try {
-            inspector.processStorageItem(item);
-          }
-          catch (Exception ex) {
-            getLogger().warn(
-                "Inspector " + inspector.getClass() + " throw exception during inspection of "
-                    + item.getRepositoryItemUid() + ", continuing...", ex);
-          }
+        catch (Exception ex) {
+          log.warn(
+              "Inspector {} throw exception during inspection of {}, continuing...", inspector.getClass(),
+              item.getRepositoryItemUid(), ex);
         }
       }
     }
@@ -481,27 +347,4 @@ public class DefaultAttributesHandler
 
   // ==
 
-  /**
-   * For UT access!
-   */
-  @VisibleForTesting
-  long getLastRequestedResolution() {
-    return lastRequestedResolution;
-  }
-
-  /**
-   * For UT access!
-   */
-  @VisibleForTesting
-  void setLastRequestedResolution(long lastRequestedResolution) {
-    this.lastRequestedResolution = lastRequestedResolution;
-  }
-
-  /**
-   * For UT access!
-   */
-  @VisibleForTesting
-  void setAttributeStorage(final AttributeStorage attributeStorage) {
-    this.attributeStorage = new DelegatingAttributeStorage(attributeStorage);
-  }
 }

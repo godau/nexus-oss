@@ -35,7 +35,6 @@ import org.sonatype.nexus.proxy.repository.Repository;
 import org.sonatype.nexus.proxy.storage.UnsupportedStorageOperationException;
 
 import com.google.common.base.Preconditions;
-import org.codehaus.plexus.util.IOUtil;
 
 /**
  * AttributeStorage implementation that uses LocalRepositoryStorage of repositories to store attributes "along" the
@@ -67,7 +66,7 @@ public class DefaultLSAttributeStorage
    */
   public DefaultLSAttributeStorage(final Marshaller marshaller) {
     this.marshaller = Preconditions.checkNotNull(marshaller);
-    getLogger().info("Default FS AttributeStorage in place, using {} marshaller.", marshaller);
+    log.info("Default FS AttributeStorage in place, using {} marshaller.", marshaller);
   }
 
   public boolean deleteAttributes(final RepositoryItemUid uid)
@@ -78,8 +77,8 @@ public class DefaultLSAttributeStorage
     uidLock.lock(Action.delete);
 
     try {
-      if (getLogger().isDebugEnabled()) {
-        getLogger().debug("Deleting attributes on UID=" + uid.toString());
+      if (log.isDebugEnabled()) {
+        log.debug("Deleting attributes on UID=" + uid.toString());
       }
 
       try {
@@ -114,8 +113,8 @@ public class DefaultLSAttributeStorage
     uidLock.lock(Action.read);
 
     try {
-      if (getLogger().isDebugEnabled()) {
-        getLogger().debug("Loading attributes on UID=" + uid.toString());
+      if (log.isDebugEnabled()) {
+        log.debug("Loading attributes on UID=" + uid.toString());
       }
 
       return doGetAttributes(uid);
@@ -133,8 +132,8 @@ public class DefaultLSAttributeStorage
     uidLock.lock(Action.create);
 
     try {
-      if (getLogger().isDebugEnabled()) {
-        getLogger().debug("Storing attributes on UID=" + uid.toString());
+      if (log.isDebugEnabled()) {
+        log.debug("Storing attributes on UID=" + uid.toString());
       }
 
       try {
@@ -169,7 +168,7 @@ public class DefaultLSAttributeStorage
       }
       catch (UnsupportedStorageOperationException ex) {
         // TODO: what here? Is local storage unsuitable for storing attributes?
-        getLogger().error("Got UnsupportedStorageOperationException during store of UID=" + uid.toString(), ex);
+        log.error("Got UnsupportedStorageOperationException during store of UID=" + uid.toString(), ex);
       }
     }
     finally {
@@ -202,8 +201,6 @@ public class DefaultLSAttributeStorage
   {
     Attributes result = null;
 
-    InputStream attributeStream = null;
-
     boolean corrupt = false;
 
     try {
@@ -221,9 +218,10 @@ public class DefaultLSAttributeStorage
           throw new InvalidInputException("Attribute of " + uid + " is empty!");
         }
 
-        attributeStream = attributeItem.getContentLocator().getContent();
-
-        result = marshaller.unmarshal(attributeStream);
+        try (InputStream attributeStream = attributeItem.getContentLocator().getContent())
+        {
+          result = marshaller.unmarshal(attributeStream);
+        }
 
         result.setRepositoryId(uid.getRepository().getId());
         result.setPath(uid.getPath());
@@ -241,27 +239,24 @@ public class DefaultLSAttributeStorage
       }
     }
     catch (InvalidInputException e) {
-      if (getLogger().isDebugEnabled()) {
+      if (log.isDebugEnabled()) {
         // we log the stacktrace
-        getLogger().info("Attributes of " + uid + " are corrupt, deleting it.", e);
+        log.info("Attributes of " + uid + " are corrupt, deleting it.", e);
       }
       else {
         // just remark about this
-        getLogger().info("Attributes of " + uid + " are corrupt, deleting it.");
+        log.info("Attributes of " + uid + " are corrupt, deleting it.");
       }
 
       corrupt = true;
     }
     catch (IOException e) {
-      getLogger().warn("While reading attributes of " + uid + " we got IOException:", e);
+      log.warn("While reading attributes of " + uid + " we got IOException:", e);
 
       throw e;
     }
     catch (ItemNotFoundException e) {
       return null;
-    }
-    finally {
-      IOUtil.close(attributeStream);
     }
 
     if (corrupt) {

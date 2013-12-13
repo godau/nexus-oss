@@ -15,27 +15,20 @@ package org.sonatype.nexus.proxy.storage.local;
 
 import java.net.URL;
 import java.util.Collection;
-import java.util.Iterator;
-
-import javax.inject.Singleton;
 
 import org.sonatype.nexus.proxy.ItemNotFoundException;
 import org.sonatype.nexus.proxy.LocalStorageException;
-import org.sonatype.nexus.proxy.ResourceStoreIteratorRequest;
 import org.sonatype.nexus.proxy.ResourceStoreRequest;
 import org.sonatype.nexus.proxy.item.AbstractStorageItem;
 import org.sonatype.nexus.proxy.item.StorageItem;
 import org.sonatype.nexus.proxy.repository.Repository;
 import org.sonatype.nexus.proxy.storage.UnsupportedStorageOperationException;
-import org.sonatype.plugin.ExtensionPoint;
 
 /**
  * Local storage.
  *
  * @author cstamas
  */
-@ExtensionPoint
-@Singleton
 public interface LocalRepositoryStorage
 {
   /**
@@ -52,7 +45,6 @@ public interface LocalRepositoryStorage
   /**
    * Check local storage for reachability.
    *
-   * @param uid the uid
    * @return true, if available (reachable)
    * @throws LocalStorageException the storage exception
    */
@@ -62,7 +54,6 @@ public interface LocalRepositoryStorage
   /**
    * Gets the absolute url from base.
    *
-   * @param uid the uid
    * @return the absolute url from base
    * @deprecated This is for internal use only!
    */
@@ -72,7 +63,6 @@ public interface LocalRepositoryStorage
   /**
    * Contains item.
    *
-   * @param uid the uid
    * @return true, if successful
    * @throws LocalStorageException the storage exception
    */
@@ -82,7 +72,6 @@ public interface LocalRepositoryStorage
   /**
    * Retrieve item.
    *
-   * @param uid the uid
    * @return the abstract storage item
    * @throws ItemNotFoundException the item not found exception
    * @throws LocalStorageException the storage exception
@@ -104,7 +93,6 @@ public interface LocalRepositoryStorage
   /**
    * Delete item, using wastebasket.
    *
-   * @param uid the uid
    * @throws ItemNotFoundException the item not found exception
    * @throws UnsupportedStorageOperationException
    *                               the unsupported storage operation exception
@@ -116,7 +104,6 @@ public interface LocalRepositoryStorage
   /**
    * Shred item, avoid wastebasket.
    *
-   * @param uid the uid
    * @throws ItemNotFoundException the item not found exception
    * @throws UnsupportedStorageOperationException
    *                               the unsupported storage operation exception
@@ -134,7 +121,6 @@ public interface LocalRepositoryStorage
   /**
    * List items.
    *
-   * @param uid the uid
    * @return the collection< storage item>
    * @throws ItemNotFoundException the item not found exception
    * @throws UnsupportedStorageOperationException
@@ -144,9 +130,4 @@ public interface LocalRepositoryStorage
   Collection<StorageItem> listItems(Repository repository, ResourceStoreRequest request)
       throws ItemNotFoundException, LocalStorageException;
 
-  /**
-   * Iterate over items.
-   */
-  Iterator<StorageItem> iterateItems(Repository repository, ResourceStoreIteratorRequest request)
-      throws ItemNotFoundException, LocalStorageException;
 }

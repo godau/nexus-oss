@@ -35,11 +35,14 @@
       <scope>provided</scope>
       <unpack>true</unpack>
       <includes>
+        <include>*:nexus-content-plugin</include>
+        <include>*:nexus-webresources-plugin</include>
         <include>*:nexus-crypto-plugin</include>
         <include>*:nexus-groovy-plugin</include>
         <include>*:nexus-h2-plugin</include>
         <include>*:nexus-restlet1x-plugin</include>
         <include>*:nexus-siesta-plugin</include>
+        <include>*:nexus-logging-plugin</include>
         <include>*:nexus-lvo-plugin</include>
         <include>*:nexus-plugin-console-plugin</include>
         <include>*:nexus-ldap-realm-plugin</include>
@@ -50,7 +53,8 @@
         <include>*:nexus-maven-bridge-plugin</include>
         <include>*:nexus-ui-extjs3-plugin</include>
         <include>*:nexus-capabilities-plugin</include>
-
+        <include>*:nexus-atlas-plugin</include>
+        <include>*:nexus-wonderland-plugin</include>
         <!-- rapture -->
         <include>*:nexus-rapture-plugin</include>
         <include>*:nexus-ui-rapture-plugin</include>

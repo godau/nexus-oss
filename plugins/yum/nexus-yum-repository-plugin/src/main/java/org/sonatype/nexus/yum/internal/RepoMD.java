@@ -13,17 +13,12 @@
 
 package org.sonatype.nexus.yum.internal;
 
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.Map;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.Maps;
-import com.google.common.io.Closeables;
 import org.codehaus.plexus.util.xml.XmlStreamReader;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.codehaus.plexus.util.xml.Xpp3DomBuilder;
@@ -38,20 +33,6 @@ public class RepoMD
 
   public RepoMD(final InputStream in) {
     locations = parse(in);
-  }
-
-  public RepoMD(final File file) {
-    BufferedInputStream in = null;
-    try {
-      in = new BufferedInputStream(new FileInputStream(file));
-      locations = parse(in);
-    }
-    catch (FileNotFoundException e) {
-      throw Throwables.propagate(e);
-    }
-    finally {
-      Closeables.closeQuietly(in);
-    }
   }
 
   private static Map<String, String> parse(final InputStream in) {
@@ -75,14 +56,6 @@ public class RepoMD
 
   public Collection<String> getLocations() {
     return locations.values();
-  }
-
-  public String getLocation(final String type) {
-    return locations.get(type);
-  }
-
-  public String getPrimaryLocation() {
-    return getLocation("primary");
   }
 
 }

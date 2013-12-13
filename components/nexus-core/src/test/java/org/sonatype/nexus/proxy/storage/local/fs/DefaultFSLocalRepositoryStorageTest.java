@@ -33,10 +33,11 @@ import org.sonatype.nexus.proxy.item.StorageItem;
 import org.sonatype.nexus.proxy.repository.DefaultRepositoryKind;
 import org.sonatype.nexus.proxy.repository.HostedRepository;
 import org.sonatype.nexus.proxy.repository.Repository;
+import org.sonatype.nexus.proxy.storage.local.DefaultLocalStorageContext;
 import org.sonatype.nexus.proxy.wastebasket.Wastebasket;
 import org.sonatype.nexus.test.PlexusTestCaseSupport;
 
-import org.codehaus.plexus.util.FileUtils;
+import org.apache.commons.io.FileUtils;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -68,13 +69,13 @@ public class DefaultFSLocalRepositoryStorageTest
     // the contents of the "valid" directory, only contains a "valid.txt" file
     File validDir = new File(repoLocation, "valid/");
     validDir.mkdirs();
-    FileUtils.fileWrite(new File(validDir, "valid.txt"), "UTF-8", "something valid");
+    FileUtils.write(new File(validDir, "valid.txt"), "something valid", "UTF-8");
     Collection<File> validFileCollection = Arrays.asList(validDir.listFiles());
 
     // the contents of the "invalid" directory, this dir contains a missing file
     File invalidDir = new File(repoLocation, "invalid/");
     invalidDir.mkdirs();
-    FileUtils.fileWrite(new File(invalidDir, "invalid.txt"), "UTF-8", "something valid");
+    FileUtils.write(new File(invalidDir, "invalid.txt"), "something valid", "UTF-8");
     List<File> invalidFileCollection = new ArrayList<File>(Arrays.asList(invalidDir.listFiles()));
     invalidFileCollection.add(new File(invalidDir, "missing.txt"));
 
@@ -101,6 +102,7 @@ public class DefaultFSLocalRepositoryStorageTest
     when(repository.getLocalUrl()).thenReturn(repoLocation.toURI().toURL().toString());
     AttributesHandler attributesHandler = mock(AttributesHandler.class);
     when(repository.getAttributesHandler()).thenReturn(attributesHandler);
+    when(repository.getLocalStorageContext()).thenReturn(new DefaultLocalStorageContext(null));
 
 
     DefaultFSLocalRepositoryStorage localRepositoryStorageUnderTest = new DefaultFSLocalRepositoryStorage(wastebasket,
@@ -132,8 +134,12 @@ public class DefaultFSLocalRepositoryStorageTest
     // Mocks
     Wastebasket wastebasket = mock(Wastebasket.class);
     Repository repository = mock(Repository.class);
+    final DefaultLocalStorageContext localStorageContext = new DefaultLocalStorageContext(null);
+    when(repository.getLocalStorageContext()).thenReturn(localStorageContext);
     FSPeer fsPeer = mock(FSPeer.class);
     MimeSupport mimeSupport = mock(MimeSupport.class);
+    when(mimeSupport.guessMimeTypeFromPath(Mockito.any(MimeRulesSource.class), Mockito.anyString()))
+        .thenReturn("text/plain");
 
     // mock file
     File mockFile = mock(File.class);

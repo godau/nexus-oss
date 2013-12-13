@@ -27,11 +27,10 @@ import org.sonatype.nexus.proxy.maven.ChecksumPolicy;
 import org.sonatype.nexus.proxy.registry.RepositoryRegistry;
 import org.sonatype.nexus.proxy.storage.remote.RemoteRepositoryStorage;
 import org.sonatype.nexus.templates.TemplateProvider;
-import org.sonatype.security.SecuritySystem;
 
+import org.apache.commons.io.FileUtils;
 import org.codehaus.plexus.ContainerConfiguration;
 import org.codehaus.plexus.PlexusConstants;
-import org.codehaus.plexus.util.FileUtils;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -39,7 +38,6 @@ import org.junit.Test;
 public class P2ProxyMirrorsTest
     extends NexusAppTestSupport
 {
-  protected NexusConfiguration nexusConfiguration;
 
   private P2ProxyRepository repository;
 
@@ -62,7 +60,7 @@ public class P2ProxyMirrorsTest
 
     startNx();
 
-    nexusConfiguration = lookup(NexusConfiguration.class);
+    lookup(NexusConfiguration.class);
 
     repository = (P2ProxyRepository) lookup(RepositoryRegistry.class).getRepository("p2-repo");
     repository.setChecksumPolicy(ChecksumPolicy.IGNORE);

@@ -23,10 +23,12 @@ import java.util.Map;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.Maps;
-import com.google.common.io.Closeables;
+import org.apache.commons.io.IOUtils;
 import org.codehaus.plexus.util.xml.XmlStreamReader;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.codehaus.plexus.util.xml.Xpp3DomBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @since yum 3.0
@@ -34,10 +36,13 @@ import org.codehaus.plexus.util.xml.Xpp3DomBuilder;
 public class RepoMD
 {
 
+  private static final Logger log = LoggerFactory.getLogger(RepoMD.class);
+
   private final Map<String, String> locations;
 
   public RepoMD(final InputStream in) {
     locations = parse(in);
+    log.debug("Locations: {}", locations);
   }
 
   public RepoMD(final File file) {
@@ -45,12 +50,13 @@ public class RepoMD
     try {
       in = new BufferedInputStream(new FileInputStream(file));
       locations = parse(in);
+      log.debug("Locations: {}", locations);
     }
     catch (FileNotFoundException e) {
       throw Throwables.propagate(e);
     }
     finally {
-      Closeables.closeQuietly(in);
+      IOUtils.closeQuietly(in);
     }
   }
 

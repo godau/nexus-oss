@@ -14,6 +14,7 @@
 package org.sonatype.nexus.plugins.p2.repository.internal;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -39,7 +40,8 @@ import org.sonatype.p2.bridge.model.TouchpointType;
 import org.sonatype.sisu.resource.scanner.helper.ListenerSupport;
 import org.sonatype.sisu.resource.scanner.scanners.SerialScanner;
 
-import org.codehaus.plexus.util.FileUtils;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
 
 import static org.sonatype.nexus.plugins.p2.repository.internal.NexusUtils.createTemporaryP2Repository;
@@ -74,16 +76,18 @@ public class DefaultP2MetadataGenerator
   private final MimeSupport mimeSupport;
 
   @Inject
-  public DefaultP2MetadataGenerator(final RepositoryRegistry repositories, final MimeSupport mimeSupport,
+  public DefaultP2MetadataGenerator(final RepositoryRegistry repositories,
+                                    final MimeSupport mimeSupport,
                                     final ArtifactRepository artifactRepository,
-                                    final MetadataRepository metadataRepository, final Publisher publisher)
+                                    final MetadataRepository metadataRepository,
+                                    final Publisher publisher)
   {
     this.repositories = repositories;
     this.mimeSupport = mimeSupport;
     this.artifactRepository = artifactRepository;
     this.metadataRepository = metadataRepository;
     this.publisher = publisher;
-    configurations = new HashMap<String, P2MetadataGeneratorConfiguration>();
+    configurations = new HashMap<>();
   }
 
   @Override
@@ -129,20 +133,28 @@ public class DefaultP2MetadataGenerator
       artifact.setRepositoryPath(item.getPath());
 
       final Collection<InstallableUnit> ius;
+      final Collection<InstallableUnit> artifactsUis;
       switch (desc.getType()) {
         case BUNDLE:
           ius = publisher.generateIUs(true /* generateCapabilities */, true /* generateManifest */,
               true /* generateTouchpointData */, file);
+          artifactsUis = ius;
           break;
         case FEATURE:
           ius = publisher.generateFeatureIUs(true /* generateCapabilities */,
               true /* generateRequirements */, file);
+          artifactsUis = new ArrayList<InstallableUnit>();
+          for (InstallableUnit iu : ius) {
+            if (!iu.getId().endsWith(".feature.group")) {
+              artifactsUis.add(iu);
+            }
+          }
           break;
         default:
           throw new IllegalStateException("Unsupported artifact type " + desc.getType().name());
       }
 
-      attachArtifact(artifact, ius);
+      attachArtifact(artifact, artifactsUis);
       storeP2Data(artifact, ius, repository);
     }
     catch (final Exception e) {
@@ -189,7 +201,7 @@ public class DefaultP2MetadataGenerator
   {
     File tempP2Repository = null;
     try {
-      final String extension = FileUtils.getExtension(artifact.getRepositoryPath());
+      final String extension = FilenameUtils.getExtension(artifact.getRepositoryPath());
 
       tempP2Repository = createTemporaryP2Repository();
 

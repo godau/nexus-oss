@@ -16,9 +16,8 @@ package org.sonatype.security.authorization;
 import java.util.Collection;
 import java.util.List;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
-
-import org.sonatype.inject.Nullable;
 
 import org.apache.shiro.authz.AuthorizationException;
 import org.apache.shiro.authz.Authorizer;
@@ -40,7 +39,7 @@ import org.slf4j.LoggerFactory;
 public class ExceptionCatchingModularRealmAuthorizer
     extends ModularRealmAuthorizer
 {
-  private final Logger logger = LoggerFactory.getLogger(getClass());
+  private static final Logger logger = LoggerFactory.getLogger(ExceptionCatchingModularRealmAuthorizer.class);
 
   public ExceptionCatchingModularRealmAuthorizer(Collection<Realm> realms) {
     super(realms);

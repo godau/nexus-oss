@@ -25,6 +25,9 @@ import javax.inject.Singleton;
 
 import org.sonatype.nexus.ApplicationStatusSource;
 import org.sonatype.nexus.apachehttpclient.Hc4Provider;
+import org.sonatype.nexus.apachehttpclient.page.Page;
+import org.sonatype.nexus.apachehttpclient.page.Page.PageContext;
+import org.sonatype.nexus.apachehttpclient.page.Page.RepositoryPageContext;
 import org.sonatype.nexus.mime.MimeSupport;
 import org.sonatype.nexus.proxy.ItemNotFoundException;
 import org.sonatype.nexus.proxy.RemoteAccessDeniedException;
@@ -36,6 +39,7 @@ import org.sonatype.nexus.proxy.item.AbstractStorageItem;
 import org.sonatype.nexus.proxy.item.ContentLocator;
 import org.sonatype.nexus.proxy.item.DefaultStorageFileItem;
 import org.sonatype.nexus.proxy.item.PreparedContentLocator;
+import org.sonatype.nexus.proxy.item.RepositoryItemUid;
 import org.sonatype.nexus.proxy.item.StorageFileItem;
 import org.sonatype.nexus.proxy.item.StorageItem;
 import org.sonatype.nexus.proxy.repository.ProxyRepository;
@@ -46,7 +50,6 @@ import org.sonatype.nexus.proxy.storage.remote.RemoteItemNotFoundException;
 import org.sonatype.nexus.proxy.storage.remote.RemoteRepositoryStorage;
 import org.sonatype.nexus.proxy.storage.remote.RemoteStorageContext;
 import org.sonatype.nexus.proxy.storage.remote.http.QueryStringBuilder;
-import org.sonatype.nexus.proxy.utils.UserAgentBuilder;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.yammer.metrics.Metrics;
@@ -122,9 +125,9 @@ public class HttpClientRemoteStorage
    * Created items while retrieving, can be written.
    */
   private static final boolean CAN_WRITE = true;
-  
+
   private final MetricsRegistry metricsRegistry;
-  
+
   private final QueryStringBuilder queryStringBuilder;
 
   private final HttpClientManager httpClientManager;
@@ -134,11 +137,12 @@ public class HttpClientRemoteStorage
   // ----------------------------------------------------------------------
 
   @Inject
-  HttpClientRemoteStorage(final UserAgentBuilder userAgentBuilder,
-                          final ApplicationStatusSource applicationStatusSource, final MimeSupport mimeSupport,
-                          final QueryStringBuilder queryStringBuilder, final HttpClientManager httpClientManager)
+  HttpClientRemoteStorage(final ApplicationStatusSource applicationStatusSource,
+                          final MimeSupport mimeSupport,
+                          final QueryStringBuilder queryStringBuilder,
+                          final HttpClientManager httpClientManager)
   {
-    super(userAgentBuilder, applicationStatusSource, mimeSupport);
+    super(applicationStatusSource, mimeSupport);
     this.metricsRegistry = Metrics.defaultRegistry();
     this.queryStringBuilder = queryStringBuilder;
     this.httpClientManager = httpClientManager;
@@ -197,7 +201,6 @@ public class HttpClientRemoteStorage
         httpItem.setRemoteUrl(remoteURL.toString());
         httpItem.setModified(makeDateFromHeader(httpResponse.getFirstHeader("last-modified")));
         httpItem.setCreated(httpItem.getModified());
-        httpItem.getItemContext().putAll(request.getRequestContext());
 
         return httpItem;
       }
@@ -318,14 +321,14 @@ public class HttpClientRemoteStorage
         // If HEAD failed, attempt a GET. Some repos may not support HEAD method
         doGet = true;
 
-        getLogger().debug("HEAD method failed, will attempt GET. Exception: " + e.getMessage(), e);
+        log.debug("HEAD method failed, will attempt GET. Exception: " + e.getMessage(), e);
       }
       finally {
         // HEAD returned error, but not exception, try GET before failing
         if (!doGet && statusCode != HttpStatus.SC_OK) {
           doGet = true;
 
-          getLogger().debug("HEAD method failed, will attempt GET. Status: " + statusCode);
+          log.debug("HEAD method failed, will attempt GET. Status: " + statusCode);
         }
       }
     }
@@ -358,6 +361,30 @@ public class HttpClientRemoteStorage
       }
       else if ((statusCode >= HttpStatus.SC_MULTIPLE_CHOICES && statusCode < HttpStatus.SC_BAD_REQUEST)
           || statusCode == HttpStatus.SC_NOT_FOUND) {
+        if (RepositoryItemUid.PATH_ROOT.equals(request.getRequestPath()) && statusCode == HttpStatus.SC_NOT_FOUND) {
+          // NEXUS-5944: Give it a chance: it might be remote Nexus with browsing disabled?
+          // to check that, we will check is remote is Nexus by pinging "well know" location
+          // if we got it, we will know it's only browsing forbidden on remote
+          final RemoteStorageContext ctx = getRemoteStorageContext(repository);
+          final HttpClient httpClient = (HttpClient) ctx.getContextObject(CTX_KEY_CLIENT);
+          final PageContext pageContext = new RepositoryPageContext(httpClient, repository);
+          final URL nxRepoMetadataUrl = appendQueryString(
+              getAbsoluteUrlFromBase(repository, new ResourceStoreRequest("/.meta/repository-metadata.xml")),
+              repository);
+          try {
+            final Page page = Page.getPageFor(pageContext, nxRepoMetadataUrl.toExternalForm());
+            if (page.getStatusCode() == 200) {
+              // this is a Nexus with browsing disabled. say OK
+              log.debug(
+                  "Original GET request for URL {} failed with 404, but GET request for URL {} succeeded, we assume remote is a Nexus repository having browsing disabled.",
+                  remoteUrl, nxRepoMetadataUrl);
+              return true;
+            }
+          }
+          catch (IOException e) {
+            // just fall trough
+          }
+        }
         return false;
       }
       else {
@@ -414,7 +441,7 @@ public class HttpClientRemoteStorage
    */
   @VisibleForTesting
   HttpResponse executeRequest(final ProxyRepository repository, final ResourceStoreRequest request,
-      final HttpUriRequest httpRequest, final String baseUrl) throws RemoteStorageException
+                              final HttpUriRequest httpRequest, final String baseUrl) throws RemoteStorageException
   {
     final Timer timer = timer(repository, httpRequest, baseUrl);
     final TimerContext timerContext = timer.time();
@@ -439,9 +466,8 @@ public class HttpClientRemoteStorage
   {
     final URI methodUri = httpRequest.getURI();
 
-    if (getLogger().isDebugEnabled()) {
-      getLogger().debug(
-          "Invoking HTTP " + httpRequest.getMethod() + " method against remote location " + methodUri);
+    if (log.isDebugEnabled()) {
+      log.debug("Invoking HTTP {} method against remote location {}", httpRequest.getMethod(), methodUri);
     }
 
     final RemoteStorageContext ctx = getRemoteStorageContext(repository);
@@ -519,7 +545,8 @@ public class HttpClientRemoteStorage
    * @throws RemoteStorageException If an error occurred during execution of HTTP request
    */
   private HttpResponse executeRequestAndRelease(final ProxyRepository repository,
-                                                final ResourceStoreRequest request, final HttpUriRequest httpRequest, final String baseUrl)
+                                                final ResourceStoreRequest request, final HttpUriRequest httpRequest,
+                                                final String baseUrl)
       throws RemoteStorageException
   {
     final HttpResponse httpResponse = executeRequest(repository, request, httpRequest, baseUrl);
@@ -540,11 +567,10 @@ public class HttpClientRemoteStorage
         result = DateUtils.parseDate(date.getValue()).getTime();
       }
       catch (DateParseException ex) {
-        getLogger().warn(
-            "Could not parse date '" + date + "', using system current time as item creation time.", ex);
+        log.warn("Could not parse date '{}', using system current time as item creation time.", date, ex);
       }
       catch (NullPointerException ex) {
-        getLogger().warn("Parsed date is null, using system current time as item creation time.");
+        log.warn("Parsed date is null, using system current time as item creation time.");
       }
     }
     return result;
@@ -594,7 +620,7 @@ public class HttpClientRemoteStorage
         EntityUtils.consume(httpResponse.getEntity());
       }
       catch (IOException e) {
-        getLogger().warn(e.getMessage());
+        log.warn(e.getMessage());
       }
     }
   }

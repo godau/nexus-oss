@@ -51,7 +51,6 @@ import org.sonatype.security.usermanagement.UserManagerFacade;
 import org.sonatype.security.usermanagement.UserNotFoundException;
 import org.sonatype.security.usermanagement.UserSearchCriteria;
 import org.sonatype.security.usermanagement.UserStatus;
-import org.sonatype.sisu.ehcache.CacheManagerComponent;
 import org.sonatype.sisu.goodies.eventbus.EventBus;
 
 import com.google.common.eventbus.Subscribe;
@@ -81,13 +80,13 @@ import org.slf4j.LoggerFactory;
 public class DefaultSecuritySystem
     implements SecuritySystem
 {
-  private final Logger logger = LoggerFactory.getLogger(getClass());
+  private static final Logger logger = LoggerFactory.getLogger(DefaultSecuritySystem.class);
 
   private SecurityConfigurationManager securityConfiguration;
 
   private RealmSecurityManager securityManager;
 
-  private CacheManagerComponent cacheManagerComponent;
+  private CacheManager cacheManager;
 
   private UserManagerFacade userManagerFacade;
 
@@ -108,12 +107,15 @@ public class DefaultSecuritySystem
   private volatile boolean started;
 
   @Inject
-  public DefaultSecuritySystem(List<SecurityEmailer> securityEmailers, EventBus eventBus,
+  public DefaultSecuritySystem(List<SecurityEmailer> securityEmailers,
+                               EventBus eventBus,
                                PasswordGenerator passwordGenerator,
-                               Map<String, AuthorizationManager> authorizationManagers, Map<String, Realm> realmMap,
+                               Map<String, AuthorizationManager> authorizationManagers,
+                               Map<String, Realm> realmMap,
                                SecurityConfigurationManager securityConfiguration,
                                RealmSecurityManager securityManager,
-                               CacheManagerComponent cacheManagerComponent, UserManagerFacade userManagerFacade)
+                               CacheManager cacheManager,
+                               UserManagerFacade userManagerFacade)
   {
     this.securityEmailers = securityEmailers;
     this.eventBus = eventBus;
@@ -122,7 +124,7 @@ public class DefaultSecuritySystem
     this.realmMap = realmMap;
     this.securityConfiguration = securityConfiguration;
     this.securityManager = securityManager;
-    this.cacheManagerComponent = cacheManagerComponent;
+    this.cacheManager = cacheManager;
 
     this.eventBus.register(this);
     this.userManagerFacade = userManagerFacade;
@@ -760,22 +762,6 @@ public class DefaultSecuritySystem
     }
     // reload the config
     this.securityConfiguration.clearCache();
-
-    // if we are restarting this component the getCacheManager will be null
-    // TODO: need better lifecycle management of cache (done), make sure this works with the NEXUS tests before
-    // removing comment
-    CacheManager cacheManager = this.cacheManagerComponent.getCacheManager();
-    // if( cacheManager == null)
-    // {
-    // try
-    // {
-    // cacheManager = this.cacheManagerComponent.buildCacheManager( null );
-    // }
-    // catch ( IOException e )
-    // {
-    // throw new IllegalStateException( "Failed to restart CacheManagerComponent" );
-    // }
-    // }
 
     // setup the CacheManager ( this could be injected if we where less coupled with ehcache)
     // The plexus wrapper can interpolate the config

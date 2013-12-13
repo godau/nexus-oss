@@ -15,8 +15,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.sonatype.guice.bean.locators.BeanLocator;
-import org.sonatype.inject.BeanEntry;
 import org.sonatype.nexus.rapture.direct.DirectResource;
 
 import com.director.core.DirectAction;
@@ -33,6 +31,8 @@ import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.inject.Key;
+import org.eclipse.sisu.BeanEntry;
+import org.eclipse.sisu.inject.BeanLocator;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -54,7 +54,7 @@ public class DirectServlet
 
   @Inject
   public DirectServlet(final BeanLocator beanLocator) {
-    configuration = new DirectConfiguration();
+    this.configuration = new DirectConfiguration();
     this.beanLocator = checkNotNull(beanLocator);
   }
 
@@ -62,7 +62,9 @@ public class DirectServlet
   public void init(final ServletConfig config) throws ServletException {
     super.init(config);
     configuration.registerAdapter(this);
-    final Iterable<BeanEntry<Annotation, DirectResource>> entries = beanLocator.locate(Key.get(DirectResource.class));
+    Iterable<? extends BeanEntry<Annotation, DirectResource>> entries = beanLocator.locate(
+        Key.get(DirectResource.class)
+    );
     List<Class<?>> apiClasses = Lists.newArrayList(
         Iterables.transform(entries, new Function<BeanEntry<Annotation, DirectResource>, Class<?>>()
         {

@@ -13,12 +13,9 @@
 
 package org.sonatype.nexus.proxy.repository;
 
-import javax.inject.Inject;
-
 import org.sonatype.nexus.proxy.AccessDeniedException;
 import org.sonatype.nexus.proxy.IllegalOperationException;
 import org.sonatype.nexus.proxy.ItemNotFoundException;
-import org.sonatype.nexus.proxy.NoSuchRepositoryException;
 import org.sonatype.nexus.proxy.ResourceStoreRequest;
 import org.sonatype.nexus.proxy.StorageException;
 import org.sonatype.nexus.proxy.events.RepositoryItemEvent;
@@ -29,7 +26,6 @@ import org.sonatype.nexus.proxy.item.RepositoryItemUid;
 import org.sonatype.nexus.proxy.item.StorageFileItem;
 import org.sonatype.nexus.proxy.item.StorageItem;
 import org.sonatype.nexus.proxy.item.StorageLinkItem;
-import org.sonatype.nexus.proxy.registry.RepositoryRegistry;
 import org.sonatype.nexus.proxy.storage.UnsupportedStorageOperationException;
 import org.sonatype.nexus.proxy.utils.RepositoryStringUtils;
 import org.sonatype.nexus.proxy.walker.AbstractFileWalkerProcessor;
@@ -37,9 +33,9 @@ import org.sonatype.nexus.proxy.walker.DefaultWalkerContext;
 import org.sonatype.nexus.proxy.walker.WalkerContext;
 import org.sonatype.nexus.proxy.walker.WalkerException;
 
+import com.google.common.eventbus.AllowConcurrentEvents;
 import com.google.common.eventbus.Subscribe;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 import static org.sonatype.nexus.proxy.ItemNotFoundException.reasonFor;
 
 /**
@@ -51,23 +47,12 @@ public abstract class AbstractShadowRepository
     extends AbstractRepository
     implements ShadowRepository
 {
-  private RepositoryRegistry repositoryRegistry;
 
   /**
    * The cached instance of master Repository, to not have it look up at every {@link #getMasterRepository()}
    * invocation from registry. This instance changes as master ID in configuration changes.
    */
   private volatile Repository masterRepository;
-  
-  @Inject
-  public void populateAbstractShadowRepository(RepositoryRegistry repositoryRegistry)
-  {
-    this.repositoryRegistry = checkNotNull(repositoryRegistry);
-  }
-
-  protected RepositoryRegistry getRepositoryRegistry() {
-    return repositoryRegistry;
-  }
 
   @Override
   protected AbstractShadowRepositoryConfiguration getExternalConfiguration(boolean forModification) {
@@ -82,22 +67,6 @@ public abstract class AbstractShadowRepository
   @Override
   public void setSynchronizeAtStartup(final boolean val) {
     getExternalConfiguration(true).setSynchronizeAtStartup(val);
-  }
-
-  @Deprecated
-  @Override
-  public String getMasterRepositoryId() {
-    // NEXUS-4901: this change is to lessen the logging noise, that is otherwise harmless but ugly
-    return getExternalConfiguration(false).getMasterRepositoryId();
-  }
-
-  @Deprecated
-  @Override
-  public void setMasterRepositoryId(final String repositoryId)
-      throws IncompatibleMasterRepositoryException, NoSuchRepositoryException
-  {
-    // look it up and delegate to "real" method
-    setMasterRepository(getRepositoryRegistry().getRepository(repositoryId));
   }
 
   @Override
@@ -131,8 +100,8 @@ public abstract class AbstractShadowRepository
         : LocalStatus.OUT_OF_SERVICE;
   }
 
-  @Override
   @Subscribe
+  @AllowConcurrentEvents
   public void onRepositoryItemEvent(final RepositoryItemEvent ievt) {
     // NEXUS-5673: do we need to act on event at all?
     if (!getLocalStatus().shouldServiceRequest()) {
@@ -153,22 +122,22 @@ public abstract class AbstractShadowRepository
         // this should be a bug? Could happen in case when master instructs shadow to create a link for a
         // release artifact, while this shadow has a snapshot repository policy. Then, how was this shapshot
         // made a shadow of release repository?
-        getLogger().debug("Shadow {} refuses to maintain links, ignoring event {}", this, ievt, e);
+        log.debug("Shadow {} refuses to maintain links, ignoring event {}", this, ievt, e);
       }
       catch (IllegalOperationException e) {
         // NEXUS-5673
         // repo out of service should be handled above
         // maybe a ReadOnly shadow?
-        getLogger().debug("Shadow {} refuses to maintain links, ignoring event {}", this, ievt, e);
+        log.debug("Shadow {} refuses to maintain links, ignoring event {}", this, ievt, e);
       }
       catch (ItemNotFoundException e) {
         // NEXUS-5673
         // happens regularly for parents, as those are not transformed and just pollutes the log
         // similar for M2 checksum files
-        getLogger().debug("Corresponding item in {} for master path not found, ignoring event {}", this, ievt);
+        log.debug("Corresponding item in {} for master path not found, ignoring event {}", this, ievt);
       }
       catch (Exception e) {
-        getLogger().warn("Could not sync shadow {} for event {}", this, ievt, e);
+        log.warn("Could not sync shadow {} for event {}", this, ievt, e);
       }
     }
   }
@@ -194,7 +163,7 @@ public abstract class AbstractShadowRepository
       return;
     }
 
-    getLogger().info("Syncing shadow " + getId() + " with master repository " + getMasterRepository().getId());
+    log.info("Syncing shadow " + getId() + " with master repository " + getMasterRepository().getId());
 
     final ResourceStoreRequest root = new ResourceStoreRequest(RepositoryItemUid.PATH_ROOT, true);
 

@@ -19,10 +19,6 @@ public class EmailerException
 
   private static final long serialVersionUID = -8229443120962556912L;
 
-  public EmailerException() {
-    this(null);
-  }
-
   public EmailerException(String message) {
     this(message, null);
   }

@@ -24,6 +24,7 @@ import java.util.List;
 import org.sonatype.plexus.rest.PlexusRestletApplicationBridge;
 import org.sonatype.plexus.rest.representation.InputStreamRepresentation;
 import org.sonatype.plexus.rest.representation.XStreamRepresentation;
+import org.sonatype.sisu.goodies.common.Loggers;
 
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.XStreamException;
@@ -44,7 +45,6 @@ import org.restlet.resource.ResourceException;
 import org.restlet.resource.StringRepresentation;
 import org.restlet.resource.Variant;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The delegating resource.
@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
 public class RestletResource
     extends Resource
 {
-  protected final Logger logger = LoggerFactory.getLogger(getClass());
+  protected final Logger logger = Loggers.getLogger(getClass());
 
   private PlexusResource delegate;
 
@@ -73,15 +73,6 @@ public class RestletResource
     setReadable(delegate.isReadable());
     setModifiable(delegate.isModifiable());
     setNegotiateContent(delegate.isNegotiateContent());
-  }
-
-  /**
-   * @deprecated Prefer Slf4j {@link #logger} instead.
-   */
-  @Override
-  @Deprecated
-  public java.util.logging.Logger getLogger() {
-    return super.getLogger();
   }
 
   /**
@@ -332,6 +323,16 @@ public class RestletResource
     if (getResponse().getStatus() == Status.SUCCESS_OK && !getResponse().isEntityAvailable()) {
       getResponse().setStatus(Status.SUCCESS_NO_CONTENT);
     }
+  }
+
+  @Override
+  public void handleOptions() {
+  	super.handleOptions();
+      try {
+      	delegate.options(getContext(), getRequest(), getResponse());
+      } catch (ResourceException re) {
+          getResponse().setStatus(re.getStatus(), re);
+      }
   }
 
   public void upload(Representation representation)

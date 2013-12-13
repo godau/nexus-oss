@@ -13,26 +13,24 @@
 
 package org.sonatype.nexus.plugins.capabilities.internal.ui;
 
+import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 
 import org.sonatype.nexus.capability.CapabilitiesPlugin;
-import org.sonatype.nexus.plugins.rest.AbstractDocumentationNexusResourceBundle;
+import org.sonatype.nexus.plugin.support.DocumentationBundle;
+import org.sonatype.nexus.plugin.support.DocumentationBundleSupport;
 
+/**
+ * Capabilities {@link DocumentationBundle}.
+ */
 @Named
 @Singleton
 public class CapabilityDocumentationResourceBundle
-    extends AbstractDocumentationNexusResourceBundle
+    extends DocumentationBundleSupport
 {
-
-  @Override
-  public String getPluginId() {
-    return CapabilitiesPlugin.ARTIFACT_ID;
+  @Inject
+  public CapabilityDocumentationResourceBundle(final CapabilitiesPlugin plugin) {
+    super(plugin);
   }
-
-  @Override
-  public String getDescription() {
-    return "Capabilities Plugin API";
-  }
-
 }

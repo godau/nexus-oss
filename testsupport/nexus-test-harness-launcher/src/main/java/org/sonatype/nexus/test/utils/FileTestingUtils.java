@@ -13,7 +13,6 @@
 
 package org.sonatype.nexus.test.utils;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -30,9 +29,10 @@ import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.IOUtils;
 import org.codehaus.plexus.util.DirectoryScanner;
-import org.codehaus.plexus.util.FileUtils;
-import org.codehaus.plexus.util.IOUtil;
 import org.codehaus.plexus.util.InterpolationFilterReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,21 +88,6 @@ public class FileTestingUtils
         is.close();
       }
     }
-  }
-
-  /**
-   * Creates a SHA1 hash from the contents of a String.
-   *
-   * @param data the String to be digested.
-   * @return An SHA1 hash based on the contents of the String.
-   */
-  public static String createSHA1FromString(String data)
-      throws IOException
-  {
-
-    ByteArrayInputStream bais = new ByteArrayInputStream(data.getBytes());
-    return createSHA1FromStream(bais);
-
   }
 
   /**
@@ -179,29 +164,6 @@ public class FileTestingUtils
     catch (Exception e) {
       LOG.warn(usage, e);
     }
-
-  }
-
-  public static void fileCopy(File from, File dest)
-      throws IOException
-  {
-    // we may also need to create any parent directories
-    if (dest.getParentFile() != null && !dest.getParentFile().exists()) {
-      dest.getParentFile().mkdirs();
-    }
-
-    FileReader fileReader = new FileReader(from);
-
-    FileWriter fos = new FileWriter(dest);
-
-    int readChar = -1;
-    while ((readChar = fileReader.read()) != -1) {
-      fos.write(readChar);
-    }
-
-    // close everything
-    fileReader.close();
-    fos.close();
   }
 
   public static void interpolationFileCopy(File from, File dest, Map<String, String> variables)
@@ -240,7 +202,7 @@ public class FileTestingUtils
 
     String[] files = scan.getIncludedFiles();
     for (String fileName : files) {
-      String extension = FileUtils.getExtension(fileName);
+      String extension = FilenameUtils.getExtension(fileName);
       File sourceFile = new File(from, fileName);
       File destFile = new File(dest, fileName);
       destFile.getParentFile().mkdirs();
@@ -250,21 +212,11 @@ public class FileTestingUtils
         FileUtils.copyFile(sourceFile, destFile);
       }
       else {
-        FileReader reader = null;
-        FileWriter writer = null;
-        try {
-          reader = new FileReader(sourceFile);
+        try (FileReader reader = new FileReader(sourceFile);
+             FileWriter writer = new FileWriter(destFile)) {
           InterpolationFilterReader filterReader = new InterpolationFilterReader(reader, variables);
-
-          writer = new FileWriter(destFile);
-
-          IOUtil.copy(filterReader, writer);
+          IOUtils.copy(filterReader, writer);
         }
-        finally {
-          IOUtil.close(reader);
-          IOUtil.close(writer);
-        }
-
       }
     }
 

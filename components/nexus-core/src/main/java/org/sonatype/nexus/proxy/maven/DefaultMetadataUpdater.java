@@ -22,7 +22,6 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 
-import org.sonatype.nexus.logging.AbstractLoggingComponent;
 import org.sonatype.nexus.proxy.LocalStorageException;
 import org.sonatype.nexus.proxy.item.StorageCollectionItem;
 import org.sonatype.nexus.proxy.maven.gav.Gav;
@@ -37,6 +36,7 @@ import org.sonatype.nexus.proxy.maven.metadata.operations.SetSnapshotOperation;
 import org.sonatype.nexus.proxy.maven.metadata.operations.SnapshotOperand;
 import org.sonatype.nexus.proxy.maven.metadata.operations.StringOperand;
 import org.sonatype.nexus.proxy.maven.metadata.operations.TimeUtil;
+import org.sonatype.sisu.goodies.common.ComponentSupport;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.maven.artifact.repository.metadata.Metadata;
@@ -47,7 +47,7 @@ import org.codehaus.plexus.util.StringUtils;
 @Named
 @Singleton
 public class DefaultMetadataUpdater
-    extends AbstractLoggingComponent
+    extends ComponentSupport
     implements MetadataUpdater
 {
   private final MetadataLocator locator;
@@ -146,102 +146,6 @@ public class DefaultMetadataUpdater
     version.setVersion(gav.getVersion());
     version.setUpdated(TimeUtil.getUTCTimestamp());
     return version;
-  }
-
-  public void undeployArtifact(ArtifactStoreRequest request)
-      throws IOException
-  {
-    if (!doesImpactMavenMetadata(request.getGav())) {
-      return;
-    }
-
-    try {
-      List<MetadataOperation> operations = null;
-
-      Gav gav = locator.getGavForRequest(request);
-
-      // GAV
-
-      Metadata gavMd = locator.retrieveGAVMetadata(request);
-
-      operations = new ArrayList<MetadataOperation>();
-
-      // simply making it foolproof?
-      gavMd.setGroupId(gav.getGroupId());
-
-      gavMd.setArtifactId(gav.getArtifactId());
-
-      gavMd.setVersion(gav.getBaseVersion());
-
-      if (gav.isSnapshot()) {
-        operations.add(new SetSnapshotOperation(new SnapshotOperand(
-            ModelVersionUtility.getModelVersion(gavMd), TimeUtil.getUTCTimestamp(),
-            MetadataBuilder.createSnapshot(request.getVersion()), buildVersioning(gav))));
-      }
-
-      MetadataBuilder.changeMetadata(gavMd, operations);
-
-      locator.storeGAVMetadata(request, gavMd);
-
-      // GA
-
-      operations = new ArrayList<MetadataOperation>();
-
-      Metadata gaMd = locator.retrieveGAMetadata(request);
-
-      operations.add(new AddVersionOperation(new StringOperand(ModelVersionUtility.getModelVersion(gaMd),
-          gav.getBaseVersion())));
-
-      MetadataBuilder.changeMetadata(gaMd, operations);
-
-      locator.storeGAMetadata(request, gaMd);
-
-      // G (if is plugin)
-
-      operations = new ArrayList<MetadataOperation>();
-
-      if (StringUtils.equals("maven-plugin", locator.retrievePackagingFromPom(request))) {
-        Metadata gMd = locator.retrieveGMetadata(request);
-
-        Plugin pluginElem = locator.extractPluginElementFromPom(request);
-
-        if (pluginElem != null) {
-          operations.add(new AddPluginOperation(new PluginOperand(
-              ModelVersionUtility.getModelVersion(gMd), pluginElem)));
-
-          MetadataBuilder.changeMetadata(gMd, operations);
-
-          locator.storeGMetadata(request, gMd);
-        }
-
-      }
-    }
-    catch (MetadataException e) {
-      throw new LocalStorageException("Not able to apply changes!", e);
-    }
-  }
-
-  // ==
-
-  public void deployArtifacts(Collection<ArtifactStoreRequest> requests)
-      throws IOException
-  {
-    // TODO Auto-generated method stub
-
-  }
-
-  public void undeployArtifacts(Collection<ArtifactStoreRequest> requests)
-      throws IOException
-  {
-    // TODO Auto-generated method stub
-
-  }
-
-  public void recreateMetadata(StorageCollectionItem coll)
-      throws IOException
-  {
-    // TODO Auto-generated method stub
-
   }
 
 }

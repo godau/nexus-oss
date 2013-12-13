@@ -14,16 +14,24 @@
 package org.sonatype.nexus.plugins.repository;
 
 import java.io.File;
+import java.io.IOException;
 
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
+
+import org.sonatype.nexus.util.file.DirSupport;
+
+import com.google.common.base.Throwables;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * {@link File} backed {@link NexusPluginRepository} that supplies system plugins.
  */
 @Named(SystemNexusPluginRepository.ID)
 @Singleton
+@Deprecated
 final class SystemNexusPluginRepository
     extends AbstractFileNexusPluginRepository
 {
@@ -37,9 +45,28 @@ final class SystemNexusPluginRepository
   // Implementation fields
   // ----------------------------------------------------------------------
 
+  private final File systemPluginsFolder;
+
   @Inject
-  @Named("${nexus-app}/plugin-repository")
-  private File systemPluginsFolder;
+  public SystemNexusPluginRepository(final @Named("${nexus-app}/plugin-repository") File systemPluginsFolder) {
+    this.systemPluginsFolder = checkNotNull(systemPluginsFolder);
+
+    // FIXME: this should probably fail, as w/o this the server is highly non-functional
+    // FIXME: injection of @Named in this manner is not ideal, as its happy to provide a "null/plugin-repository" reference
+
+    if (!systemPluginsFolder.exists()) {
+      log.warn("Missing system plugins folder: {}", systemPluginsFolder);
+    }
+
+    try {
+      DirSupport.mkdir(systemPluginsFolder.toPath());
+    }
+    catch (IOException e) {
+      throw Throwables.propagate(e);
+    }
+  }
+
+
 
   // ----------------------------------------------------------------------
   // Public methods
@@ -59,9 +86,6 @@ final class SystemNexusPluginRepository
 
   @Override
   protected File getNexusPluginsDirectory() {
-    if (!systemPluginsFolder.exists()) {
-      systemPluginsFolder.mkdirs();
-    }
     return systemPluginsFolder;
   }
 }

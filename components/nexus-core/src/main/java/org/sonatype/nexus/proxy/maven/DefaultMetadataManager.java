@@ -24,9 +24,9 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 
-import org.sonatype.nexus.logging.AbstractLoggingComponent;
 import org.sonatype.nexus.proxy.maven.gav.Gav;
 import org.sonatype.nexus.proxy.maven.metadata.operations.ModelVersionUtility;
+import org.sonatype.sisu.goodies.common.ComponentSupport;
 
 import org.apache.maven.artifact.repository.metadata.Metadata;
 import org.apache.maven.artifact.repository.metadata.Snapshot;
@@ -45,7 +45,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @Singleton
 @Named
 public class DefaultMetadataManager
-    extends AbstractLoggingComponent
+    extends ComponentSupport
     implements MetadataManager
 {
   static final String LATEST_VERSION = "LATEST";
@@ -70,13 +70,6 @@ public class DefaultMetadataManager
       throws IOException
   {
     metadataUpdater.deployArtifact(request);
-  }
-
-  @Override
-  public void undeployArtifact(ArtifactStoreRequest request)
-      throws IOException
-  {
-    metadataUpdater.undeployArtifact(request);
   }
 
   @Override
@@ -182,8 +175,8 @@ public class DefaultMetadataManager
     MavenRepository repository = gavRequest.getMavenRepository();
 
     if (RepositoryPolicy.SNAPSHOT.equals(repository.getRepositoryPolicy())) {
-      if (getLogger().isDebugEnabled()) {
-        getLogger().debug(
+      if (log.isDebugEnabled()) {
+        log.debug(
             "Not a RELEASE repository for resolving GAV: " + gav.getGroupId() + " : " + gav.getArtifactId()
                 + " : " + gav.getVersion() + " in repository " + repository.getId());
       }
@@ -191,8 +184,8 @@ public class DefaultMetadataManager
       return gavRequest.getVersion();
     }
 
-    if (getLogger().isDebugEnabled()) {
-      getLogger().debug(
+    if (log.isDebugEnabled()) {
+      log.debug(
           "Resolving snapshot version for GAV: " + gavRequest.getGroupId() + " : " + gavRequest.getArtifactId()
               + " : " + gavRequest.getVersion() + " in repository " + repository.getId());
     }
@@ -221,8 +214,8 @@ public class DefaultMetadataManager
     }
 
     if (!StringUtils.isEmpty(release)) {
-      if (getLogger().isDebugEnabled()) {
-        getLogger().debug("Resolved gav version from '" + gav.getVersion() + "' to '" + release + "'");
+      if (log.isDebugEnabled()) {
+        log.debug("Resolved gav version from '" + gav.getVersion() + "' to '" + release + "'");
       }
 
       return release;
@@ -243,8 +236,8 @@ public class DefaultMetadataManager
       return gav;
     }
 
-    if (getLogger().isDebugEnabled()) {
-      getLogger().debug(
+    if (log.isDebugEnabled()) {
+      log.debug(
           "Resolving snapshot version for GAV: " + gav.getGroupId() + " : " + gav.getArtifactId() + " : "
               + gav.getVersion() + " in repository " + repository.getId());
     }
@@ -290,8 +283,8 @@ public class DefaultMetadataManager
     }
 
     if (!StringUtils.isEmpty(latest) && Gav.isSnapshot(latest)) {
-      if (getLogger().isDebugEnabled()) {
-        getLogger().debug("Resolved gav version from '" + gav.getVersion() + "' to '" + latest + "'");
+      if (log.isDebugEnabled()) {
+        log.debug("Resolved gav version from '" + gav.getVersion() + "' to '" + latest + "'");
       }
 
       Gav result =

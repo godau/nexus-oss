@@ -74,11 +74,6 @@ public class SystemStatus
   private SystemState state;
 
   /**
-   * The Nexus operation mode.
-   */
-  private OperationMode operationMode;
-
-  /**
    * The time this instance of Nexus was started.
    */
   private Date initializedAt;
@@ -206,14 +201,6 @@ public class SystemStatus
 
   public void setState(SystemState status) {
     this.state = status;
-  }
-
-  public OperationMode getOperationMode() {
-    return operationMode;
-  }
-
-  public void setOperationMode(OperationMode operationMode) {
-    this.operationMode = operationMode;
   }
 
   public Date getInitializedAt() {

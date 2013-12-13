@@ -47,7 +47,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * Jersey based Capabilities Nexus Client Subsystem implementation.
  *
- * @since 2.1
+ * @since capabilities 2.1
  */
 public class CapabilitiesImpl
     implements Capabilities
@@ -222,45 +222,6 @@ public class CapabilitiesImpl
       return null;
     }
     return findFactoryOf(resource.getCapability().getTypeId()).create(client, resource);
-  }
-
-  public static String path(final String id) {
-    try {
-      return "capabilities/" + URLEncoder.encode(id, "UTF-8");
-    }
-    catch (UnsupportedEncodingException e) {
-      throw Throwables.propagate(e);
-    }
-  }
-
-  public static String pathStatus(final String id) {
-    checkNotNull(id);
-    try {
-      return "capabilities/" + URLEncoder.encode(id, "UTF-8") + "/status";
-    }
-    catch (UnsupportedEncodingException e) {
-      throw Throwables.propagate(e);
-    }
-  }
-
-  public static class CapabilityAwareUniformInterfaceException
-      extends ContextAwareUniformInterfaceException
-  {
-
-    private final String id;
-
-    public CapabilityAwareUniformInterfaceException(final ClientResponse response, final String id) {
-      super(response);
-      this.id = id;
-    }
-
-    @Override
-    public String getMessage(final int status) {
-      if (status == Response.Status.NOT_FOUND.getStatusCode()) {
-        return String.format("Capability with id '%s' was not found", id);
-      }
-      return null;
-    }
   }
 
 }

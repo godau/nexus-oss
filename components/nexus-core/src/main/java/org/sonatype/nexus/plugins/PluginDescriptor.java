@@ -17,14 +17,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.sonatype.nexus.plugins.rest.StaticResource;
 import org.sonatype.nexus.proxy.registry.RepositoryTypeDescriptor;
+import org.sonatype.nexus.web.WebResource;
 import org.sonatype.plugin.metadata.GAVCoordinate;
 import org.sonatype.plugins.model.PluginMetadata;
 
 /**
  * Describes a Nexus plugin: its metadata, exports/imports, and what resources it contains.
  */
+@Deprecated
 public final class PluginDescriptor
 {
   // ----------------------------------------------------------------------
@@ -49,7 +50,7 @@ public final class PluginDescriptor
 
   private List<RepositoryTypeDescriptor> repositoryTypes = Collections.emptyList();
 
-  private List<StaticResource> staticResources = Collections.emptyList();
+  private List<WebResource> staticResources = Collections.emptyList();
 
   // ----------------------------------------------------------------------
   // Constructors
@@ -83,14 +84,6 @@ public final class PluginDescriptor
     return resolvedPlugins;
   }
 
-  public List<RepositoryTypeDescriptor> getRepositoryTypes() {
-    return repositoryTypes;
-  }
-
-  public List<StaticResource> getStaticResources() {
-    return staticResources;
-  }
-
   public String formatAsString() {
     final StringBuilder buf = new StringBuilder();
 
@@ -117,7 +110,7 @@ public final class PluginDescriptor
       buf.append(LS);
       buf.append("         Static resources:").append(LS);
 
-      for (final StaticResource resource : staticResources) {
+      for (final WebResource resource : staticResources) {
         buf.append("         * Content type \"").append(resource.getContentType());
         buf.append("\", to be published at path \"").append(resource.getPath()).append("\"").append(LS);
       }
@@ -168,7 +161,7 @@ public final class PluginDescriptor
     repositoryTypes = Collections.unmodifiableList(new ArrayList<RepositoryTypeDescriptor>(types));
   }
 
-  void setStaticResources(final List<StaticResource> resources) {
-    staticResources = Collections.unmodifiableList(new ArrayList<StaticResource>(resources));
+  void setStaticResources(final List<WebResource> resources) {
+    staticResources = Collections.unmodifiableList(new ArrayList<WebResource>(resources));
   }
 }

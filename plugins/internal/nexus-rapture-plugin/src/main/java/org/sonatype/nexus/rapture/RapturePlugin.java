@@ -2,7 +2,7 @@ package org.sonatype.nexus.rapture;
 
 import javax.inject.Named;
 
-import org.sonatype.inject.EagerSingleton;
+import org.eclipse.sisu.EagerSingleton;
 import org.sonatype.nexus.plugin.PluginIdentity;
 
 /**

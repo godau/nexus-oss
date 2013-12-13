@@ -26,13 +26,13 @@ import java.util.HashMap;
 import org.sonatype.ldaptestsuite.LdapServer;
 import org.sonatype.nexus.test.NexusTestSupport;
 import org.sonatype.security.guice.SecurityModule;
-import org.sonatype.sisu.ehcache.CacheManagerComponent;
 
 import com.google.common.collect.ObjectArrays;
 import com.google.inject.Module;
+import net.sf.ehcache.CacheManager;
+import org.apache.commons.io.IOUtils;
 import org.codehaus.plexus.ContainerConfiguration;
 import org.codehaus.plexus.PlexusConstants;
-import org.codehaus.plexus.util.IOUtil;
 import org.codehaus.plexus.util.InterpolationFilterReader;
 
 public abstract class LdapTestSupport
@@ -66,15 +66,13 @@ public abstract class LdapTestSupport
   {
     super.setUp();
 
-    ldapServer = (LdapServer) lookup(LdapServer.ROLE);
-
-    ldapRealmConfig = new File(getConfHomeDir(), "ldap.xml");
-
     // check if we have a custom ldap.xml for this test
     String classname = this.getClass().getName();
     File sourceLdapXml =
         new File(getBasedir() + "/target/test-classes/" + classname.replace('.', '/') + "-ldap.xml");
 
+    ldapServer = (LdapServer) lookup(LdapServer.ROLE);
+    ldapRealmConfig = new File(getConfHomeDir(), "ldap.xml");
     if (sourceLdapXml.exists()) {
       this.interpolateLdapXml(sourceLdapXml, ldapRealmConfig);
     }
@@ -87,7 +85,7 @@ public abstract class LdapTestSupport
   public void tearDown()
       throws Exception
   {
-    lookup(CacheManagerComponent.class).shutdown();
+    lookup(CacheManager.class).shutdown();
 
     if (ldapServer != null && ldapServer.isStarted()) {
       ldapServer.stop();
@@ -110,11 +108,10 @@ public abstract class LdapTestSupport
   protected void copyResourceToFile(String resource, File outputFile)
       throws IOException
   {
-    InputStream in = getClass().getResourceAsStream(resource);
-    OutputStream out = new FileOutputStream(outputFile);
-    IOUtil.copy(in, out);
-    IOUtil.close(in);
-    IOUtil.close(out);
+    try (InputStream in = getClass().getResourceAsStream(resource);
+         OutputStream out = new FileOutputStream(outputFile)) {
+      IOUtils.copy(in, out);
+    }
   }
 
   protected void copyResourceToFile(String resource, String outputFilePath)
@@ -129,17 +126,17 @@ public abstract class LdapTestSupport
   protected void interpolateLdapXml(String resource, File outputFile)
       throws IOException
   {
-    InputStream in = getClass().getResourceAsStream(resource);
-    this.interpolateLdapXml(in, outputFile);
-    IOUtil.close(in);
+    try (InputStream in = getClass().getResourceAsStream(resource)) {
+      interpolateLdapXml(in, outputFile);
+    }
   }
 
   protected void interpolateLdapXml(File sourceFile, File outputFile)
       throws IOException
   {
-    FileInputStream fis = new FileInputStream(sourceFile);
-    this.interpolateLdapXml(fis, outputFile);
-    IOUtil.close(fis);
+    try (FileInputStream fis = new FileInputStream(sourceFile)) {
+      interpolateLdapXml(fis, outputFile);
+    }
   }
 
   private void interpolateLdapXml(InputStream inputStream, File outputFile)
@@ -148,10 +145,10 @@ public abstract class LdapTestSupport
     HashMap<String, String> interpolationMap = new HashMap<String, String>();
     interpolationMap.put("port", Integer.toString(getLdapServer().getPort()));
 
-    Reader reader = new InterpolationFilterReader(new InputStreamReader(inputStream), interpolationMap);
-    OutputStream out = new FileOutputStream(outputFile);
-    IOUtil.copy(reader, out);
-    IOUtil.close(out);
+    try (Reader reader = new InterpolationFilterReader(new InputStreamReader(inputStream), interpolationMap);
+         OutputStream out = new FileOutputStream(outputFile)) {
+      IOUtils.copy(reader, out);
+    }
   }
 
 }

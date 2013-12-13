@@ -42,7 +42,7 @@ import com.google.common.collect.Lists;
  * <p>
  * Note: all the input paths are expected to be "normalized ones": being absolute, using generic "/" character as path
  * separator (since these are NOT File paths, but just hierarchical paths of strings). For example:
- * {@link RepositoryItemUid#getPath()} returns paths like these.
+ * {@link RepositoryItemUid#getPath()} returns paths like these. See {@link RepositoryItemUid} for explanation.
  * <p>
  * This class also "optimizes" the tree size to lessen memory use. This "optimization" can be turned off, see
  * constructors.
@@ -178,26 +178,6 @@ public class ParentOMatic
         if (input.isLeaf()) {
           paths.add(input.getPath());
         }
-        return null;
-      }
-    };
-    applyRecursively(ROOT, markedCollector);
-    return paths;
-  }
-
-  /**
-   * Returns the list of all path.
-   *
-   * @since 2.4
-   */
-  public List<String> getAllPaths() {
-    // doing scanning
-    final ArrayList<String> paths = new ArrayList<String>();
-    final Function<Node<Payload>, Node<Payload>> markedCollector = new Function<Node<Payload>, Node<Payload>>()
-    {
-      @Override
-      public Node<Payload> apply(Node<Payload> input) {
-        paths.add(input.getPath());
         return null;
       }
     };

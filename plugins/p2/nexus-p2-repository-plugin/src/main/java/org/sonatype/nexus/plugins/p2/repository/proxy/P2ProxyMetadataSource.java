@@ -31,22 +31,22 @@ import org.sonatype.nexus.plugins.p2.repository.metadata.Artifacts;
 import org.sonatype.nexus.plugins.p2.repository.metadata.Content;
 import org.sonatype.nexus.proxy.ItemNotFoundException;
 import org.sonatype.nexus.proxy.LocalStorageException;
-import org.sonatype.nexus.proxy.RemoteAccessException;
 import org.sonatype.nexus.proxy.RemoteStorageException;
+import org.sonatype.nexus.proxy.RequestContext;
 import org.sonatype.nexus.proxy.ResourceStoreRequest;
 import org.sonatype.nexus.proxy.item.AbstractStorageItem;
 import org.sonatype.nexus.proxy.item.ContentLocator;
 import org.sonatype.nexus.proxy.item.DefaultStorageFileItem;
 import org.sonatype.nexus.proxy.item.FileContentLocator;
 import org.sonatype.nexus.proxy.item.StorageFileItem;
-import org.sonatype.nexus.proxy.item.StorageItem;
 import org.sonatype.nexus.proxy.repository.RemoteAuthenticationSettings;
 import org.sonatype.nexus.proxy.repository.UsernamePasswordRemoteAuthenticationSettings;
 import org.sonatype.nexus.proxy.storage.UnsupportedStorageOperationException;
+import org.sonatype.nexus.util.file.DirSupport;
 import org.sonatype.p2.bridge.ArtifactRepository;
 import org.sonatype.p2.bridge.MetadataRepository;
 
-import org.codehaus.plexus.util.FileUtils;
+import org.apache.commons.io.FileUtils;
 import org.codehaus.plexus.util.xml.XmlStreamReader;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.codehaus.plexus.util.xml.Xpp3DomBuilder;
@@ -76,7 +76,7 @@ public class P2ProxyMetadataSource
   }
 
   @Override
-  protected Map<String, StorageFileItem> doRetrieveArtifactsFileItems(final Map<String, Object> context,
+  protected Map<String, StorageFileItem> doRetrieveArtifactsFileItems(final RequestContext context,
                                                                       final P2ProxyRepository repository)
       throws RemoteStorageException, ItemNotFoundException
   {
@@ -84,8 +84,8 @@ public class P2ProxyMetadataSource
 
     try {
       final File artifactRepositoryDir = File.createTempFile("artifacts", "");
-      artifactRepositoryDir.delete();
-      artifactRepositoryDir.mkdirs();
+      DirSupport.delete(artifactRepositoryDir.toPath());
+      DirSupport.mkdir(artifactRepositoryDir.toPath());
 
       final File artifactMappingsXmlFile = File.createTempFile("p2proxy.artifact-mappings", ".xml");
       try {
@@ -161,7 +161,7 @@ public class P2ProxyMetadataSource
   }
 
   @Override
-  protected Map<String, StorageFileItem> doRetrieveContentFileItems(final Map<String, Object> context,
+  protected Map<String, StorageFileItem> doRetrieveContentFileItems(final RequestContext context,
                                                                     final P2ProxyRepository repository)
       throws RemoteStorageException, ItemNotFoundException
   {
@@ -169,8 +169,8 @@ public class P2ProxyMetadataSource
 
     try {
       final File metadataRepositoryDir = File.createTempFile("content", "");
-      metadataRepositoryDir.delete();
-      metadataRepositoryDir.mkdirs();
+      DirSupport.delete(metadataRepositoryDir.toPath());
+      DirSupport.mkdir(metadataRepositoryDir.toPath());
 
       try {
         String username = null;
@@ -234,16 +234,8 @@ public class P2ProxyMetadataSource
     }
   }
 
-  protected StorageItem doRetrieveRemoteItem(final P2ProxyRepository repository, final String path,
-                                             final Map<String, Object> context)
-      throws ItemNotFoundException, RemoteAccessException, RemoteStorageException
-  {
-    return repository.getRemoteStorage().retrieveItem(repository, new ResourceStoreRequest(path),
-        repository.getRemoteUrl());
-  }
-
   @Override
-  protected void setItemAttributes(final StorageFileItem item, final Map<String, Object> context,
+  protected void setItemAttributes(final StorageFileItem item, final RequestContext context,
                                    final P2ProxyRepository repository)
   {
     final String mirrorsURL = (String) context.get(CTX_MIRRORS_URL);

@@ -40,10 +40,6 @@ public abstract class CancelableRunnableSupport
 {
   private final CancelableSupport cancelableSupport;
 
-  protected CancelableRunnableSupport(final String name) {
-    this(null, name);
-  }
-
   protected CancelableRunnableSupport(final ProgressListener progressListener, final String name) {
     super(progressListener, name);
     this.cancelableSupport = new CancelableSupport();
@@ -68,7 +64,7 @@ public abstract class CancelableRunnableSupport
   @Override
   public void run() {
     if (isCanceled()) {
-      getLogger().debug("{} canceled before running, bailing out.", getName());
+      log.debug("{} canceled before running, bailing out.", getName());
       return;
     }
     final Cancelable oldCancelable = CancelableUtil.getCurrentCancelable();

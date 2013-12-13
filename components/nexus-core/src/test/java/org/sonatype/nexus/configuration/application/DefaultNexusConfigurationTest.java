@@ -16,8 +16,6 @@ package org.sonatype.nexus.configuration.application;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.Map;
 
 import org.sonatype.nexus.NexusAppTestSupport;
@@ -28,16 +26,13 @@ import org.sonatype.nexus.proxy.repository.DefaultRemoteHttpProxySettings;
 import org.sonatype.nexus.proxy.repository.LocalStatus;
 import org.sonatype.security.SecuritySystem;
 
-import org.codehaus.plexus.util.FileUtils;
-import org.codehaus.plexus.util.io.InputStreamFacade;
+import org.apache.commons.io.FileUtils;
 import org.junit.Test;
 
 public class DefaultNexusConfigurationTest
     extends NexusAppTestSupport
 {
   protected DefaultNexusConfiguration nexusConfiguration;
-
-  protected SecuritySystem securitySystem;
 
   protected NexusEmailer nexusEmailer;
 
@@ -52,7 +47,7 @@ public class DefaultNexusConfigurationTest
 
     nexusConfiguration.loadConfiguration();
 
-    securitySystem = this.lookup(SecuritySystem.class);
+    lookup(SecuritySystem.class);
 
     nexusEmailer = lookup(NexusEmailer.class);
 
@@ -153,18 +148,9 @@ public class DefaultNexusConfigurationTest
     // save it
     nexusConfiguration.saveConfiguration();
 
-    // replace it again with default "from behind"
-    InputStreamFacade isf = new InputStreamFacade()
-    {
-
-      public InputStream getInputStream()
-          throws IOException
-      {
-        return getClass().getResourceAsStream("/META-INF/nexus/nexus.xml");
-      }
-
-    };
-    FileUtils.copyStreamToFile(isf, new File(getNexusConfiguration()));
+    FileUtils.copyInputStreamToFile(
+        getClass().getResourceAsStream("/META-INF/nexus/nexus.xml"), new File(getNexusConfiguration())
+    );
 
     // force reload
     nexusConfiguration.loadConfiguration(true);
@@ -201,7 +187,7 @@ public class DefaultNexusConfigurationTest
   {
     File testConfFile = new File(getConfHomeDir(), "test.xml");
 
-    FileUtils.fileWrite(testConfFile.getAbsolutePath(), "test");
+    FileUtils.write(testConfFile, "test");
 
     Map<String, String> confFileNames = nexusConfiguration.getConfigurationFiles();
 

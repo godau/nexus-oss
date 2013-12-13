@@ -24,19 +24,17 @@ import org.sonatype.nexus.proxy.registry.RepositoryTypeDescriptor;
 import org.sonatype.nexus.proxy.registry.RepositoryTypeRegistry;
 import org.sonatype.nexus.proxy.repository.Repository;
 import org.sonatype.nexus.proxy.utils.RepositoryStringUtils;
+import org.sonatype.sisu.goodies.common.ComponentSupport;
 
 import org.apache.commons.lang.StringUtils;
 import org.restlet.data.Request;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Named
 @Singleton
 public class RestletRepositoryURLBuilder
+    extends ComponentSupport
     implements RepositoryURLBuilder
 {
-  private final Logger logger = LoggerFactory.getLogger(getClass());
-
   private final RepositoryRegistry repositoryRegistry;
 
   private final RepositoryTypeRegistry repositoryTypeRegistry;
@@ -88,7 +86,8 @@ public class RestletRepositoryURLBuilder
     }
     // next check if this thread has a restlet request
     else if (Request.getCurrent() != null) {
-      baseURL = Request.getCurrent().getRootRef().toString();
+      // TODO: NEXUS-6045 hack, Restlet app root is now "/service/local", so going up 2 levels!
+      baseURL = Request.getCurrent().getRootRef().getParentRef().getParentRef().toString();
     }
     // as last resort, try to use the baseURL if set
     else {
@@ -97,7 +96,7 @@ public class RestletRepositoryURLBuilder
 
     // if all else fails?
     if (StringUtils.isBlank(baseURL)) {
-      logger.info("Not able to build content URL of the repository {}, baseUrl not set!",
+      log.info("Not able to build content URL of the repository {}, baseUrl not set!",
           RepositoryStringUtils.getHumanizedNameString(repository));
 
       return null;

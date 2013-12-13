@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 
 import javax.enterprise.inject.Typed;
 import javax.inject.Inject;
@@ -32,7 +33,7 @@ import org.sonatype.security.model.upgrade.SecurityConfigurationUpgrader;
 import org.sonatype.sisu.goodies.common.io.FileReplacer;
 import org.sonatype.sisu.goodies.common.io.FileReplacer.ContentWriter;
 
-import org.codehaus.plexus.util.FileUtils;
+import org.apache.commons.io.FileUtils;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -51,7 +52,7 @@ public class FileModelConfigurationSource
   /**
    * The configuration file.
    */
-  private File configurationFile;
+  private final File configurationFile;
 
   /**
    * The configuration upgrader.
@@ -85,17 +86,6 @@ public class FileModelConfigurationSource
    */
   public File getConfigurationFile() {
     return configurationFile;
-  }
-
-  /**
-   * Sets the configuration file.
-   *
-   * @param configurationFile the new configuration file
-   * @deprecated replaced by constructor injection
-   */
-  @Deprecated
-  public void setConfigurationFile(File configurationFile) {
-    this.configurationFile = configurationFile;
   }
 
   public Configuration loadConfiguration()
@@ -220,8 +210,11 @@ public class FileModelConfigurationSource
   {
     // Create the dir if doesn't exist, throw runtime exception on failure
     // bad bad bad
-    if (!file.getParentFile().exists() && !file.getParentFile().mkdirs()) {
-      String message =
+    try {
+      Files.createDirectories(file.getParentFile().toPath());
+    }
+    catch (IOException e) {
+      final String message =
           "\r\n******************************************************************************\r\n"
               + "* Could not create configuration file [ "
               + file.toString()
@@ -230,7 +223,7 @@ public class FileModelConfigurationSource
               + "******************************************************************************";
 
       getLogger().error(message);
-      throw new IOException("Could not create configuration file " + file.getAbsolutePath());
+      throw new IOException("Could not create configuration file " + file.getAbsolutePath(), e);
     }
 
     final Configuration configuration = getConfiguration();

@@ -14,7 +14,7 @@
 package org.sonatype.scheduling;
 
 /**
- * Runtime exception thrown in cases when thread is interrupted. Semantical meaning is almost same as
+ * Runtime exception thrown in cases when thread is interrupted. Semantically meaning is almost same as
  * {@link InterruptedException} except this one is unchecked exception.
  *
  * @author cstamas
@@ -30,12 +30,6 @@ public class TaskInterruptedException
     super(message);
 
     this.cancelled = cancelled;
-  }
-
-  public TaskInterruptedException(String message, Throwable cause) {
-    super(message, cause);
-
-    this.cancelled = false;
   }
 
   public TaskInterruptedException(Throwable cause) {

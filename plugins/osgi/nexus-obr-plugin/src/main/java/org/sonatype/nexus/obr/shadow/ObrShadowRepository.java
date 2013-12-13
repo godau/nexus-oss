@@ -18,7 +18,6 @@ import java.util.Collection;
 import javax.inject.Inject;
 import javax.inject.Named;
 
-import org.sonatype.inject.Description;
 import org.sonatype.nexus.configuration.Configurator;
 import org.sonatype.nexus.configuration.model.CRepository;
 import org.sonatype.nexus.configuration.model.CRepositoryExternalConfigurationHolderFactory;
@@ -42,6 +41,7 @@ import org.sonatype.nexus.proxy.repository.RepositoryKind;
 import org.sonatype.nexus.proxy.repository.ShadowRepository;
 
 import org.codehaus.plexus.util.xml.Xpp3Dom;
+import org.eclipse.sisu.Description;
 import org.osgi.service.obr.Resource;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -155,17 +155,18 @@ public class ObrShadowRepository
       ObrUtils.buildObr(obrMetadataSource, ObrUtils.createObrUid(this), getMasterRepository(), getWalker());
     }
     catch (final StorageException e) {
-      getLogger().warn("Problem rebuilding OBR metadata for repository " + getId(), e);
+      log.warn("Problem rebuilding OBR metadata for repository " + getId(), e);
     }
   }
 
   @Override
-  protected StorageItem doRetrieveItem(final ResourceStoreRequest request)
+  public StorageItem retrieveItem(final boolean fromTask, final ResourceStoreRequest request)
       throws IllegalOperationException, ItemNotFoundException, StorageException
   {
     try {
       // treat expired items just like not found items
-      final StorageItem item = super.doRetrieveItem(request);
+      // NEXUS-5930: Method below, when returns, will RELEASE the read lock
+      final StorageItem item = super.retrieveItem(fromTask, request);
       if (!item.isExpired()) {
         return item;
       }
@@ -176,9 +177,9 @@ public class ObrShadowRepository
 
     // forcibly generate missing OBR metadata
     if (ObrUtils.isObrMetadataRequest(request)) {
+      // if client wanted OBR.XML, try to recreate it now that lock is RELEASED
       synchronizeWithMaster();
-
-      return super.doRetrieveItem(request);
+      return super.retrieveItem(fromTask, request);
     }
 
     // re-route request to the master repository

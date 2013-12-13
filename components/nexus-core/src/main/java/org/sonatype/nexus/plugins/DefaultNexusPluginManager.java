@@ -34,26 +34,21 @@ import org.sonatype.aether.util.version.GenericVersionScheme;
 import org.sonatype.aether.version.InvalidVersionSpecificationException;
 import org.sonatype.aether.version.Version;
 import org.sonatype.aether.version.VersionScheme;
-import org.sonatype.guice.bean.reflect.ClassSpace;
-import org.sonatype.guice.bean.reflect.URLClassSpace;
-import org.sonatype.guice.nexus.binders.NexusAnnotatedBeanModule;
-import org.sonatype.guice.plexus.binders.PlexusXmlBeanModule;
-import org.sonatype.guice.plexus.config.PlexusBeanModule;
-import org.sonatype.inject.Parameters;
+import org.sonatype.nexus.events.Event;
 import org.sonatype.nexus.guice.AbstractInterceptorModule;
+import org.sonatype.nexus.guice.NexusAnnotatedBeanModule;
 import org.sonatype.nexus.guice.NexusModules.PluginModule;
 import org.sonatype.nexus.mime.MimeSupport;
 import org.sonatype.nexus.plugins.events.PluginActivatedEvent;
 import org.sonatype.nexus.plugins.events.PluginRejectedEvent;
+import org.sonatype.nexus.plugins.repository.NexusPluginRepository;
 import org.sonatype.nexus.plugins.repository.NoSuchPluginRepositoryArtifactException;
 import org.sonatype.nexus.plugins.repository.PluginRepositoryArtifact;
-import org.sonatype.nexus.plugins.repository.PluginRepositoryManager;
-import org.sonatype.nexus.plugins.rest.NexusResourceBundle;
-import org.sonatype.nexus.plugins.rest.StaticResource;
 import org.sonatype.nexus.proxy.registry.RepositoryTypeDescriptor;
 import org.sonatype.nexus.proxy.registry.RepositoryTypeRegistry;
 import org.sonatype.nexus.util.AlphanumComparator;
-import org.sonatype.plexus.appevents.Event;
+import org.sonatype.nexus.web.WebResource;
+import org.sonatype.nexus.web.WebResourceBundle;
 import org.sonatype.plugin.metadata.GAVCoordinate;
 import org.sonatype.plugins.model.ClasspathDependency;
 import org.sonatype.plugins.model.PluginDependency;
@@ -68,14 +63,17 @@ import org.codehaus.plexus.DefaultPlexusContainer;
 import org.codehaus.plexus.classworlds.realm.ClassRealm;
 import org.codehaus.plexus.classworlds.realm.DuplicateRealmException;
 import org.codehaus.plexus.classworlds.realm.NoSuchRealmException;
+import org.eclipse.sisu.Parameters;
+import org.eclipse.sisu.plexus.PlexusBeanModule;
+import org.eclipse.sisu.plexus.PlexusXmlBeanModule;
+import org.eclipse.sisu.space.ClassSpace;
+import org.eclipse.sisu.space.URLClassSpace;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-/**
- * Default {@link NexusPluginManager} implementation backed by a {@link PluginRepositoryManager}.
- */
 @Named
 @Singleton
+@Deprecated
 public class DefaultNexusPluginManager
     implements NexusPluginManager
 {
@@ -83,7 +81,7 @@ public class DefaultNexusPluginManager
   // Implementation fields
   // ----------------------------------------------------------------------
 
-  private final PluginRepositoryManager repositoryManager;
+  private final NexusPluginRepository repositoryManager;
 
   private final EventBus eventBus;
 
@@ -106,7 +104,7 @@ public class DefaultNexusPluginManager
   @Inject
   public DefaultNexusPluginManager(final RepositoryTypeRegistry repositoryTypeRegistry,
                                    final EventBus eventBus,
-                                   final PluginRepositoryManager repositoryManager,
+                                   final NexusPluginRepository repositoryManager,
                                    final DefaultPlexusContainer container,
                                    final MimeSupport mimeSupport,
                                    final @Parameters Map<String, String> variables,
@@ -124,14 +122,6 @@ public class DefaultNexusPluginManager
   // ----------------------------------------------------------------------
   // Public methods
   // ----------------------------------------------------------------------
-
-  public Map<GAVCoordinate, PluginDescriptor> getActivatedPlugins() {
-    return new HashMap<GAVCoordinate, PluginDescriptor>(activePlugins);
-  }
-
-  public Map<GAVCoordinate, PluginMetadata> getInstalledPlugins() {
-    return repositoryManager.findAvailablePlugins();
-  }
 
   public Map<GAVCoordinate, PluginResponse> getPluginResponses() {
     return new HashMap<GAVCoordinate, PluginResponse>(pluginResponses);
@@ -151,35 +141,6 @@ public class DefaultNexusPluginManager
       result.add(activatePlugin(gav, true, filteredPlugins.keySet()));
     }
     return result;
-  }
-
-  public boolean isActivatedPlugin(final GAVCoordinate gav) {
-    return isActivatedPlugin(gav, true);
-  }
-
-  public PluginManagerResponse activatePlugin(final GAVCoordinate gav) {
-    // if multiple V's for GAs are found, choose the one with biggest version (and pray that plugins has sane
-    // versioning)
-    Map<GAVCoordinate, PluginMetadata> filteredPlugins =
-        filterInstalledPlugins(repositoryManager.findAvailablePlugins());
-
-    return activatePlugin(gav, true, filteredPlugins.keySet());
-  }
-
-  public PluginManagerResponse deactivatePlugin(final GAVCoordinate gav) {
-    throw new UnsupportedOperationException(); // TODO
-  }
-
-  public boolean installPluginBundle(final URL bundle)
-      throws IOException
-  {
-    throw new UnsupportedOperationException(); // TODO
-  }
-
-  public boolean uninstallPluginBundle(final GAVCoordinate gav)
-      throws IOException
-  {
-    throw new UnsupportedOperationException(); // TODO
   }
 
   // ----------------------------------------------------------------------
@@ -247,10 +208,6 @@ public class DefaultNexusPluginManager
 
     // sad face here
     return null;
-  }
-
-  protected boolean isActivatedPlugin(final GAVCoordinate gav, final boolean strict) {
-    return getActivatedPluginGav(gav, strict) != null;
   }
 
   protected PluginManagerResponse activatePlugin(final GAVCoordinate gav, final boolean strict,
@@ -394,33 +351,34 @@ public class DefaultNexusPluginManager
       }
     }
 
-    final List<String> exportedClassNames = new ArrayList<String>();
-    final List<RepositoryTypeDescriptor> repositoryTypes = new ArrayList<RepositoryTypeDescriptor>();
-    final List<StaticResource> staticResources = new ArrayList<StaticResource>();
+    final List<PlexusBeanModule> beanModules = new ArrayList<PlexusBeanModule>();
 
-    final NexusResourceBundle resourceBundle = new NexusResourceBundle()
+    // Scan for Plexus XML components
+    final ClassSpace pluginSpace = new URLClassSpace(pluginRealm);
+    beanModules.add(new PlexusXmlBeanModule(pluginSpace, variables));
+
+    // Scan for annotated components
+    final ClassSpace annSpace = new URLClassSpace(pluginRealm, scanList.toArray(new URL[scanList.size()]));
+    final List<RepositoryTypeDescriptor> repositoryTypes = new ArrayList<RepositoryTypeDescriptor>();
+    beanModules.add(new NexusAnnotatedBeanModule(annSpace, variables, repositoryTypes));
+
+    // Find static resources and expose as single resource bundle
+    final List<WebResource> staticResources = findStaticResources(descriptor.getPluginCoordinates(), pluginSpace);
+    final WebResourceBundle resourceBundle = new WebResourceBundle()
     {
-      public List<StaticResource> getContributedResouces() {
+      public List<WebResource> getResources() {
         return staticResources;
       }
     };
-
     final Module resourceModule = new AbstractModule()
     {
       @Override
       protected void configure() {
-        bind(NexusResourceBundle.class).annotatedWith(Names.named(realmId)).toInstance(resourceBundle);
+        bind(WebResourceBundle.class).annotatedWith(Names.named(realmId)).toInstance(resourceBundle);
       }
     };
 
-    final List<PlexusBeanModule> beanModules = new ArrayList<PlexusBeanModule>();
-
-    final ClassSpace pluginSpace = new URLClassSpace(pluginRealm);
-    beanModules.add(new PlexusXmlBeanModule(pluginSpace, variables));
-
-    final ClassSpace annSpace = new URLClassSpace(pluginRealm, scanList.toArray(new URL[scanList.size()]));
-    beanModules.add(new NexusAnnotatedBeanModule(annSpace, variables, exportedClassNames, repositoryTypes));
-
+    // Assemble plugin components and resources
     final List<Module> modules = new ArrayList<Module>();
     modules.add(resourceModule);
     modules.add(new PluginModule());
@@ -432,19 +390,38 @@ public class DefaultNexusPluginManager
       repositoryTypeRegistry.registerRepositoryTypeDescriptors(r);
     }
 
-    final Enumeration<URL> e = pluginSpace.findEntries("static/", null, true);
-    while (e.hasMoreElements()) {
+    descriptor.setExportedClassnames(findExportedClassnames(annSpace));
+    descriptor.setRepositoryTypes(repositoryTypes);
+    descriptor.setStaticResources(staticResources);
+  }
+
+  private List<WebResource> findStaticResources(final GAVCoordinate gav, final ClassSpace pluginSpace) {
+    final List<WebResource> staticResources = new ArrayList<WebResource>();
+    for (Enumeration<URL> e = pluginSpace.findEntries("static/", null, true); e.hasMoreElements(); ) {
       final URL url = e.nextElement();
       final String path = getPublishedPath(url);
       if (path != null) {
-        staticResources.add(new PluginStaticResource(url, path,
+        staticResources.add(new PluginWebResource(gav, url, path,
             mimeSupport.guessMimeTypeFromPath(url.getPath())));
       }
     }
+    return staticResources;
+  }
 
-    descriptor.setExportedClassnames(exportedClassNames);
-    descriptor.setRepositoryTypes(repositoryTypes);
-    descriptor.setStaticResources(staticResources);
+  private static List<String> findExportedClassnames(final ClassSpace annSpace) {
+    final List<String> exportedClassNames = new ArrayList<String>();
+    for (Enumeration<URL> e = annSpace.findEntries(null, "*.class", true); e.hasMoreElements(); ) {
+      String path = e.nextElement().getPath();
+      int index = path.lastIndexOf("jar!/");
+      if (index > 0) {
+        path = path.substring(index + 5);
+      }
+      if (path.startsWith("/")) {
+        path = path.substring(1);
+      }
+      exportedClassNames.add(path.replace(".class", "").replaceAll("[/$]", "."));
+    }
+    return exportedClassNames;
   }
 
   private URL toURL(final PluginRepositoryArtifact artifact) {

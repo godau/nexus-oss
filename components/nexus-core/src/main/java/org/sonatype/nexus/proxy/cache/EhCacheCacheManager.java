@@ -17,14 +17,13 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 
-import org.sonatype.nexus.logging.AbstractLoggingComponent;
 import org.sonatype.nexus.proxy.events.NexusStoppedEvent;
-import org.sonatype.sisu.ehcache.CacheManagerComponent;
+import org.sonatype.sisu.goodies.common.ComponentSupport;
 import org.sonatype.sisu.goodies.eventbus.EventBus;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import com.google.common.eventbus.Subscribe;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * The Class EhCacheCacheManager is a thin wrapper around EhCache, just to make things going.
@@ -34,31 +33,29 @@ import com.google.common.eventbus.Subscribe;
 @Named
 @Singleton
 public class EhCacheCacheManager
-    extends AbstractLoggingComponent
+    extends ComponentSupport
     implements CacheManager
 {
-  private final CacheManagerComponent cacheManagerComponent;
+  private final net.sf.ehcache.CacheManager cacheManager;
 
   public static final String SINGLE_PATH_CACHE_NAME = "path-cache";
 
   @Inject
-  public EhCacheCacheManager(final EventBus eventBus, final CacheManagerComponent cacheManagerComponent) {
+  public EhCacheCacheManager(final EventBus eventBus, final net.sf.ehcache.CacheManager cacheManager) {
     eventBus.register(this);
-    this.cacheManagerComponent = checkNotNull(cacheManagerComponent);
+    this.cacheManager = checkNotNull(cacheManager);
   }
 
   public PathCache getPathCache(String cache) {
-    final net.sf.ehcache.CacheManager ehCacheManager = cacheManagerComponent.getCacheManager();
-
-    if (!ehCacheManager.cacheExists(SINGLE_PATH_CACHE_NAME)) {
-      ehCacheManager.addCache(SINGLE_PATH_CACHE_NAME);
+    if (!cacheManager.cacheExists(SINGLE_PATH_CACHE_NAME)) {
+      cacheManager.addCache(SINGLE_PATH_CACHE_NAME);
     }
 
-    return new EhCachePathCache(cache, ehCacheManager.getEhcache(SINGLE_PATH_CACHE_NAME));
+    return new EhCachePathCache(cache, cacheManager.getEhcache(SINGLE_PATH_CACHE_NAME));
   }
 
   @Subscribe
-  public void on(final NexusStoppedEvent evt) {
-    cacheManagerComponent.shutdown();
+  public void on(final NexusStoppedEvent event) {
+    cacheManager.shutdown();
   }
 }

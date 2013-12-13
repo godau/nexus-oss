@@ -12,9 +12,8 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 
-import org.sonatype.nexus.configuration.application.ApplicationConfiguration;
-import org.sonatype.nexus.plugins.rest.NexusResourceBundle;
-import org.sonatype.nexus.plugins.rest.StaticResource;
+import org.sonatype.nexus.web.WebResource;
+import org.sonatype.nexus.web.WebResourceBundle;
 import org.sonatype.sisu.goodies.template.TemplateEngine;
 import org.sonatype.sisu.goodies.template.TemplateParameters;
 
@@ -33,41 +32,35 @@ import static com.google.common.base.Preconditions.checkState;
 @Named
 @Singleton
 public class WebResources
-    implements NexusResourceBundle
+    implements WebResourceBundle
 {
   private static final Logger log = LoggerFactory.getLogger(WebResources.class);
 
-  private final ApplicationConfiguration applicationConfiguration;
-
   private final TemplateEngine templateEngine;
 
-  private final List<NexusResourceBundle> resourceBundles;
+  private final List<WebResourceBundle> resourceBundles;
 
   @Inject
-  public WebResources(final ApplicationConfiguration applicationConfiguration,
-                      final TemplateEngine templateEngine,
-                      final List<NexusResourceBundle> resourceBundles)
+  public WebResources(final TemplateEngine templateEngine,
+                      final List<WebResourceBundle> resourceBundles)
   {
-    this.applicationConfiguration = checkNotNull(applicationConfiguration);
     this.templateEngine = checkNotNull(templateEngine);
     this.resourceBundles = checkNotNull(resourceBundles);
   }
 
   @Override
-  public List<StaticResource> getContributedResouces() {
-    return Arrays.<StaticResource>asList(
+  public List<WebResource> getResources() {
+    return Arrays.<WebResource>asList(
         new AppJs()
     );
   }
-
-  // FIXME: Add index.html generation here too
 
   /**
    * Renders app.js with {@code NX.app.pluginConfigClassNames} set to the list of detected
    * {@code NX._package_.app.PluginConfig} extjs classes.
    */
   private class AppJs
-      implements StaticResource
+      implements WebResource
   {
     public static final String NS_PREFIX = "/static/rapture/NX/";
 
@@ -116,8 +109,8 @@ public class WebResources
      */
     private List<String> getPluginConfigClassNames() {
       List<String> classNames = Lists.newArrayList();
-      for (NexusResourceBundle bundle : resourceBundles) {
-        for (StaticResource resource : bundle.getContributedResouces()) {
+      for (WebResourceBundle bundle : resourceBundles) {
+        for (WebResource resource : bundle.getResources()) {
           String path = resource.getPath();
           if (path.startsWith(NS_PREFIX) && path.endsWith(PLUGIN_CONFIG_SUFFIX)) {
             // rebuild the class name which has NX. prefix and minus the .js suffix

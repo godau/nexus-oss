@@ -19,11 +19,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
-import org.sonatype.guice.bean.containers.InjectedTestCase;
-import org.sonatype.inject.BeanScanning;
-
-import org.codehaus.plexus.util.FileUtils;
-import org.codehaus.plexus.util.IOUtil;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.eclipse.sisu.launch.InjectedTestCase;
+import org.eclipse.sisu.space.BeanScanning;
 
 public abstract class AbstractSecurityConfigTest
     extends InjectedTestCase
@@ -57,16 +56,9 @@ public abstract class AbstractSecurityConfigTest
   protected void copyResource(String resource, String dest)
       throws IOException
   {
-    InputStream stream = null;
-    FileOutputStream ostream = null;
-    try {
-      stream = getClass().getResourceAsStream(resource);
-      ostream = new FileOutputStream(dest);
-      IOUtil.copy(stream, ostream);
-    }
-    finally {
-      IOUtil.close(stream);
-      IOUtil.close(ostream);
+    try (InputStream in = getClass().getResourceAsStream(resource);
+         FileOutputStream out = new FileOutputStream(dest)) {
+      IOUtils.copy(in, out);
     }
   }
 
@@ -86,17 +78,9 @@ public abstract class AbstractSecurityConfigTest
   public static void copyFromStreamToFile(InputStream is, File output)
       throws IOException
   {
-    FileOutputStream fos = null;
-
-    try {
-      fos = new FileOutputStream(output);
-
-      IOUtil.copy(is, fos);
-    }
-    finally {
-      IOUtil.close(is);
-
-      IOUtil.close(fos);
+    try (InputStream in = is;
+         FileOutputStream fos = new FileOutputStream(output)) {
+      IOUtils.copy(is, fos);
     }
   }
 

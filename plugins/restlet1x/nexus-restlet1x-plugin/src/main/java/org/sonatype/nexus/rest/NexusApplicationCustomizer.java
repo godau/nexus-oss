@@ -13,13 +13,12 @@
 
 package org.sonatype.nexus.rest;
 
-import javax.inject.Singleton;
-
 import org.sonatype.plexus.rest.RetargetableRestlet;
-import org.sonatype.plugin.ExtensionPoint;
 
-@ExtensionPoint
-@Singleton
+/**
+ * @deprecated Unused class, since NEXUS-6045 this does not function anymore as before. Will be dropped in next release.
+ */
+@Deprecated
 public interface NexusApplicationCustomizer
 {
   void customize(NexusApplication nexusApplication, RetargetableRestlet root);

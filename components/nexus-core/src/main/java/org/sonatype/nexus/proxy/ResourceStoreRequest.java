@@ -272,17 +272,6 @@ public class ResourceStoreRequest
   }
 
   /**
-   * Adds the repository to the list of processed repositories.
-   * 
-   * @deprecated Use the {@link #addProcessedRepository(String)} method instead, as here we actually deal with
-   *             Repository IDs and not with {@link Repository} instances.
-   */
-  @Deprecated
-  public void addProcessedRepository(Repository repository) {
-    addProcessedRepository(repository.getId());
-  }
-
-  /**
    * Adds the repository ID to the list of processed repository IDs.
    * 
    * @since 2.7.0
@@ -406,7 +395,9 @@ public class ResourceStoreRequest
   public ResourceStoreRequest cloneAndDetach() {
     final ResourceStoreRequest result = new ResourceStoreRequest(getRequestPath());
     result.requestContext.setParentContext(null);
-    result.requestContext.putAll(requestContext.flatten());
+    for (Map.Entry<String, Object> entry : requestContext.flatten().entrySet()) {
+      result.requestContext.put(entry.getKey(), entry.getValue());
+    }
     result.pathStack.clear();
     result.processedRepositories.clear();
     result.processedRepositories.addAll(processedRepositories);

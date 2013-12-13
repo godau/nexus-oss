@@ -15,12 +15,14 @@ package org.sonatype.nexus.proxy.maven;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Locale;
 
 import org.sonatype.nexus.proxy.item.StorageFileItem;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.codehaus.plexus.util.IOUtil;
+import com.google.common.base.Charsets;
+import com.google.common.io.CharStreams;
 import org.codehaus.plexus.util.StringUtils;
 
 /**
@@ -51,11 +53,8 @@ public class MUtils
   public static String readDigestFromStream(final InputStream inputStream)
       throws IOException
   {
-    try {
-      return readDigest(IOUtil.toString(inputStream, "UTF-8"));
-    }
-    finally {
-      IOUtil.close(inputStream);
+    try (InputStreamReader isr = new InputStreamReader(inputStream, Charsets.UTF_8)) {
+      return readDigest(CharStreams.toString(isr));
     }
   }
 

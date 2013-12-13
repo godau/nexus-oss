@@ -25,12 +25,12 @@ import org.sonatype.nexus.plugins.p2.repository.metadata.Content;
 import org.sonatype.nexus.plugins.p2.repository.metadata.P2MetadataMergeException;
 import org.sonatype.nexus.proxy.item.StorageFileItem;
 
-import org.codehaus.plexus.util.IOUtil;
 import org.codehaus.plexus.util.xml.XmlStreamReader;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.codehaus.plexus.util.xml.Xpp3DomBuilder;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -65,7 +65,8 @@ public class MetadataMergeTest
     Assert.assertEquals(5, merged.getMappings().size());
   }
 
-  // @Test
+  @Test
+  @Ignore
   public void incompatibleRepositoryProperties()
       throws Exception
   {
@@ -167,12 +168,8 @@ public class MetadataMergeTest
   private Xpp3Dom loadXpp3Dom(final String filepath)
       throws IOException, XmlPullParserException
   {
-    final FileInputStream is = new FileInputStream(new File("src/test/resources", filepath));
-    try {
+    try (FileInputStream is = new FileInputStream(new File("src/test/resources", filepath))) {
       return Xpp3DomBuilder.build(new XmlStreamReader(is));
-    }
-    finally {
-      IOUtil.close(is);
     }
   }
 }

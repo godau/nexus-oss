@@ -16,10 +16,10 @@ package org.sonatype.nexus.proxy.maven.routing.internal.scrape;
 import java.util.HashMap;
 import java.util.List;
 
+import org.sonatype.nexus.apachehttpclient.page.Page;
+import org.sonatype.nexus.apachehttpclient.page.Page.UnexpectedPageResponse;
 import org.sonatype.nexus.proxy.maven.MavenProxyRepository;
-import org.sonatype.nexus.proxy.maven.routing.internal.scrape.Page.UnexpectedPageResponse;
 import org.sonatype.sisu.goodies.common.FormatTemplate;
-import org.sonatype.sisu.goodies.common.SimpleFormat;
 import org.sonatype.sisu.litmus.testsupport.TestSupport;
 import org.sonatype.tests.http.server.fluent.Server;
 
@@ -280,12 +280,6 @@ public class NexusScraperTest
         }
       }
     };
-  }
-
-  protected FormatTemplate templateWithPort(final String template, final Server server) {
-    final FormatTemplate result = SimpleFormat.template(template, new ServerPortReader(server));
-    result.setDynamic(true);
-    return result;
   }
 
   protected Server prepareServer(int code, final RemoteType remoteType)

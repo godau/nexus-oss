@@ -92,14 +92,6 @@ public class DummyWaitingNexusTask
     return result;
   }
 
-  protected String getAction() {
-    return "DUMMY";
-  }
-
-  protected String getMessage() {
-    return "A Dummy task, waits for some time";
-  }
-
   public String getId() {
     return "dummyId";
   }
@@ -115,9 +107,4 @@ public class DummyWaitingNexusTask
   public String getAlertEmail() {
     return null;
   }
-
-  public TaskActivityDescriptor getTaskActivityDescriptor() {
-    return null;
-  }
-
 }

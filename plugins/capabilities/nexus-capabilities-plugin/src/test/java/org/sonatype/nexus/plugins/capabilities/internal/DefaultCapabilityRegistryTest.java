@@ -61,7 +61,6 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -71,7 +70,7 @@ import static org.sonatype.nexus.plugins.capabilities.CapabilityType.capabilityT
 /**
  * {@link DefaultCapabilityRegistry} UTs.
  *
- * @since 2.0
+ * @since capabilities 2.0
  */
 public class DefaultCapabilityRegistryTest
     extends TestSupport
@@ -156,7 +155,7 @@ public class DefaultCapabilityRegistryTest
     final CapabilityReference reference = underTest.add(CAPABILITY_TYPE, true, null, null);
     assertThat(reference, is(not(nullValue())));
 
-    verify(eventBus).post(rec.capture());
+    verify(eventBus, atLeastOnce()).post(rec.capture());
     assertThat(rec.getValue(), is(instanceOf(CapabilityEvent.Created.class)));
     assertThat(rec.getValue().getReference(), is(equalTo(reference)));
   }
@@ -175,7 +174,7 @@ public class DefaultCapabilityRegistryTest
 
     assertThat(reference1, is(equalTo(reference)));
 
-    verify(eventBus, times(2)).post(rec.capture());
+    verify(eventBus, atLeastOnce()).post(rec.capture());
     assertThat(rec.getAllValues().get(0), is(instanceOf(CapabilityEvent.Created.class)));
     assertThat(rec.getAllValues().get(0).getReference(), is(equalTo(reference1)));
     assertThat(rec.getAllValues().get(1), is(instanceOf(CapabilityEvent.AfterRemove.class)));
@@ -386,7 +385,9 @@ public class DefaultCapabilityRegistryTest
   {
     final CapabilityDescriptor descriptor = mock(CapabilityDescriptor.class);
     when(capabilityDescriptorRegistry.get(CAPABILITY_TYPE)).thenReturn(descriptor);
-    when(descriptor.formFields()).thenReturn(Arrays.<FormField>asList(new PasswordFormField("foo")));
+    when(descriptor.formFields()).thenReturn(Arrays.<FormField>asList(
+        new PasswordFormField("foo", "foo", "?", FormField.OPTIONAL)
+    ));
 
     Map<String, String> properties = Maps.newHashMap();
     properties.put("foo", "bar");
@@ -420,13 +421,15 @@ public class DefaultCapabilityRegistryTest
     final CapabilityDescriptor descriptor = mock(CapabilityDescriptor.class);
     when(capabilityDescriptorRegistry.get(CAPABILITY_TYPE)).thenReturn(descriptor);
     when(descriptor.version()).thenReturn(0);
-    when(descriptor.formFields()).thenReturn(Arrays.<FormField>asList(new PasswordFormField("foo")));
+    when(descriptor.formFields()).thenReturn(Arrays.<FormField>asList(
+        new PasswordFormField("foo", "foo", "?", FormField.OPTIONAL)
+    ));
 
     underTest.load();
 
     ArgumentCaptor<Object> ebRec = ArgumentCaptor.forClass(Object.class);
 
-    verify(eventBus, times(2)).post(ebRec.capture());
+    verify(eventBus, atLeastOnce()).post(ebRec.capture());
     assertThat(
         ((CapabilityEvent) ebRec.getAllValues().get(0)).getReference().context().properties().get("foo"), is("bar")
     );

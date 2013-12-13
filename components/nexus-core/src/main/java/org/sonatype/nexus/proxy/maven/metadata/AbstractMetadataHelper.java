@@ -33,7 +33,6 @@ import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.codehaus.plexus.configuration.PlexusConfiguration;
 import org.codehaus.plexus.configuration.xml.XmlPlexusConfiguration;
-import org.codehaus.plexus.util.IOUtil;
 import org.codehaus.plexus.util.ReaderFactory;
 import org.codehaus.plexus.util.StringUtils;
 import org.codehaus.plexus.util.xml.Xpp3DomBuilder;
@@ -278,9 +277,7 @@ abstract public class AbstractMetadataHelper
     String prefix = null;
     try {
       if (exists(jarPath)) {
-        InputStream jar = retrieveContent(jarPath);
-        ZipInputStream zip = new ZipInputStream(jar);
-        try {
+        try (ZipInputStream zip = new ZipInputStream(retrieveContent(jarPath))) {
           ZipEntry entry;
           while ((entry = zip.getNextEntry()) != null) {
             if (!entry.isDirectory() && entry.getName().equals("META-INF/maven/plugin.xml")) {
@@ -293,10 +290,6 @@ abstract public class AbstractMetadataHelper
             }
             zip.closeEntry();
           }
-        }
-        finally {
-          IOUtil.close(zip);
-          IOUtil.close(jar);
         }
       }
     }

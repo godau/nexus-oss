@@ -25,7 +25,7 @@ import org.sonatype.nexus.proxy.maven.maven2.M2Repository;
 import org.sonatype.nexus.proxy.maven.maven2.M2RepositoryConfiguration;
 import org.sonatype.nexus.proxy.repository.Repository;
 
-import org.codehaus.plexus.util.FileUtils;
+import org.apache.commons.io.FileUtils;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 /**
@@ -33,11 +33,11 @@ import org.codehaus.plexus.util.xml.Xpp3Dom;
  *
  * @author cstamas
  */
-public class AbstractAttributesHandlerTest
+public abstract class AbstractAttributesHandlerTest
     extends AbstractNexusTestEnvironment
 {
 
-  protected DefaultAttributesHandler attributesHandler;
+  protected AttributesHandler attributesHandler;
 
   protected M2Repository repository;
 
@@ -46,10 +46,10 @@ public class AbstractAttributesHandlerTest
   {
     super.setUp();
 
-    FileUtils.copyDirectoryStructure(new File(getBasedir(), "target/test-classes/repo1"), new File(
+    FileUtils.copyDirectory(new File(getBasedir(), "target/test-classes/repo1"), new File(
         getBasedir(), "target/test-reposes/repo1"));
 
-    attributesHandler = (DefaultAttributesHandler) lookup(AttributesHandler.class);
+    attributesHandler = createAttributesHandler();
 
     repository = (M2Repository) lookup(Repository.class, "maven2");
 
@@ -70,17 +70,11 @@ public class AbstractAttributesHandlerTest
     exRepoConf.setRepositoryPolicy(RepositoryPolicy.RELEASE);
     exRepoConf.setChecksumPolicy(ChecksumPolicy.STRICT_IF_EXISTS);
 
-    if (attributesHandler.getAttributeStorage().getDelegate() instanceof DefaultFSAttributeStorage) {
-      FileUtils.deleteDirectory(
-          ((DefaultFSAttributeStorage) attributesHandler.getAttributeStorage().getDelegate()).getWorkingDirectory());
-    }
-    else if (attributesHandler.getAttributeStorage().getDelegate() instanceof DefaultLSAttributeStorage) {
-      FileUtils.deleteDirectory(new File(localStorageDirectory, ".nexus/attributes"));
-    }
-    else if (attributesHandler.getAttributeStorage().getDelegate() instanceof TransitioningAttributeStorage) {
-      FileUtils.deleteDirectory(new File(localStorageDirectory, ".nexus/attributes"));
-    }
+    // LS is the default AttributeStorage, so no need for guessing
+    FileUtils.deleteDirectory(new File(localStorageDirectory, ".nexus/attributes"));
 
     repository.configure(repoConf);
   }
+
+  protected abstract AttributesHandler createAttributesHandler() throws Exception;
 }

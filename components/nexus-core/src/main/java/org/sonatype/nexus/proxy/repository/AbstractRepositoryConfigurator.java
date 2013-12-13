@@ -32,10 +32,10 @@ import org.sonatype.nexus.configuration.validator.ApplicationValidationResponse;
 import org.sonatype.nexus.plugins.RepositoryCustomizer;
 import org.sonatype.nexus.proxy.LocalStorageException;
 import org.sonatype.nexus.proxy.registry.RepositoryRegistry;
-import org.sonatype.nexus.proxy.registry.RepositoryTypeRegistry;
 import org.sonatype.nexus.proxy.storage.local.LocalRepositoryStorage;
+import org.sonatype.nexus.proxy.storage.local.LocalStorageContext;
 
-import org.codehaus.plexus.util.StringUtils;
+import com.google.common.base.Strings;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -44,26 +44,22 @@ public abstract class AbstractRepositoryConfigurator
 {
   private RepositoryRegistry repositoryRegistry;
 
-  private RepositoryTypeRegistry repositoryTypeRegistry;
-  
   private Map<String, LocalRepositoryStorage> localRepositoryStorages;
 
   private Map<String, RepositoryCustomizer> pluginRepositoryConfigurators;
 
   @Inject
   public void populateAbstractRepositoryConfigurator(final RepositoryRegistry repositoryRegistry,
-                                        final RepositoryTypeRegistry repositoryTypeRegistry,
-                                        final Map<String, LocalRepositoryStorage> localRepositoryStorages,
-                                        final Map<String, RepositoryCustomizer> pluginRepositoryConfigurators)
+                                                     final Map<String, LocalRepositoryStorage> localRepositoryStorages,
+                                                     final Map<String, RepositoryCustomizer> pluginRepositoryConfigurators)
   {
     this.repositoryRegistry = checkNotNull(repositoryRegistry);
-    this.repositoryTypeRegistry = checkNotNull(repositoryTypeRegistry);
     this.localRepositoryStorages = checkNotNull(localRepositoryStorages);
     this.pluginRepositoryConfigurators = checkNotNull(pluginRepositoryConfigurators);
   }
 
   @Override
-  public final void applyConfiguration(final Repository target, 
+  public final void applyConfiguration(final Repository target,
                                        final ApplicationConfiguration configuration,
                                        final CRepositoryCoreConfiguration config)
       throws ConfigurationException
@@ -80,7 +76,9 @@ public abstract class AbstractRepositoryConfigurator
     }
   }
 
-  public final void prepareForSave(Repository target, ApplicationConfiguration configuration, CRepositoryCoreConfiguration config) {
+  public final void prepareForSave(Repository target, ApplicationConfiguration configuration,
+                                   CRepositoryCoreConfiguration config)
+  {
     // in 1st round, i intentionally choosed to make our lives bitter, and handle plexus config manually
     // later we will see about it
     doPrepareForSave(target, configuration, config);
@@ -106,18 +104,16 @@ public abstract class AbstractRepositoryConfigurator
       throw new InvalidConfigurationException("Malformed URL for LocalRepositoryStorage!", e);
     }
 
-    String localUrl = null;
-    boolean usingDefaultLocalUrl = false;
+    String localUrl;
+    boolean usingDefaultLocalUrl;
 
-    if (repo.getLocalStorage() != null && !StringUtils.isEmpty(repo.getLocalStorage().getUrl())) {
+    if (repo.getLocalStorage() != null && !Strings.isNullOrEmpty(repo.getLocalStorage().getUrl())) {
       localUrl = repo.getLocalStorage().getUrl();
+      usingDefaultLocalUrl = false;
     }
     else {
       localUrl = repo.defaultLocalStorageUrl;
       usingDefaultLocalUrl = true;
-
-      // Default dir is going to be valid
-      defaultStorageFile.mkdirs();
     }
 
     if (repo.getLocalStorage() == null) {
@@ -136,6 +132,11 @@ public abstract class AbstractRepositoryConfigurator
       }
 
       repository.setLocalStorage(ls);
+      // mark local storage context dirty, if applicable
+      final LocalStorageContext ctx = repository.getLocalStorageContext();
+      if (ctx != null) {
+        ctx.incrementGeneration();
+      }
     }
     catch (LocalStorageException e) {
       ValidationResponse response = new ApplicationValidationResponse();
@@ -165,10 +166,6 @@ public abstract class AbstractRepositoryConfigurator
 
   protected RepositoryRegistry getRepositoryRegistry() {
     return repositoryRegistry;
-  }
-
-  protected RepositoryTypeRegistry getRepositoryTypeRegistry() {
-    return repositoryTypeRegistry;
   }
 
   protected LocalRepositoryStorage getLocalRepositoryStorage(String repoId, String provider)

@@ -13,8 +13,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.sonatype.nexus.plugins.rest.NexusResourceBundle;
-import org.sonatype.nexus.plugins.rest.StaticResource;
+import org.sonatype.nexus.web.WebResource;
+import org.sonatype.nexus.web.WebResourceBundle;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,10 +35,10 @@ public class ResourceServlet
 {
   private static final Logger log = LoggerFactory.getLogger(ResourceServlet.class);
 
-  private final List<NexusResourceBundle> resourceBundles;
+  private final List<WebResourceBundle> resourceBundles;
 
   @Inject
-  public ResourceServlet(final List<NexusResourceBundle> resourceBundles) {
+  public ResourceServlet(final List<WebResourceBundle> resourceBundles) {
     this.resourceBundles = checkNotNull(resourceBundles);
   }
 
@@ -54,7 +54,7 @@ public class ResourceServlet
       this.matchTypes = matchTypes;
     }
 
-    public boolean matches(final StaticResource resource) {
+    public boolean matches(final WebResource resource) {
       String contentType = resource.getContentType();
       for (String matchType : matchTypes) {
         if (matchType.equals(contentType)) {
@@ -88,8 +88,8 @@ public class ResourceServlet
     resp.setContentType("text/plain");
     PrintWriter writer = resp.getWriter();
 
-    for (NexusResourceBundle bundle : resourceBundles) {
-      for (StaticResource resource : bundle.getContributedResouces()) {
+    for (WebResourceBundle bundle : resourceBundles) {
+      for (WebResource resource : bundle.getResources()) {
         if (type.matches(resource)) {
           if (resource.getPath().startsWith("/static/rapture")) {
             // TODO: Sort out how we want to deal with this and integration with wro4j

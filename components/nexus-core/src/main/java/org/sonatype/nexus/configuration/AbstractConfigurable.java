@@ -15,7 +15,7 @@ package org.sonatype.nexus.configuration;
 
 import org.sonatype.configuration.ConfigurationException;
 import org.sonatype.nexus.configuration.application.ApplicationConfiguration;
-import org.sonatype.nexus.logging.AbstractLoggingComponent;
+import org.sonatype.sisu.goodies.common.ComponentSupport;
 import org.sonatype.sisu.goodies.eventbus.EventBus;
 
 import com.google.common.eventbus.Subscribe;
@@ -26,18 +26,18 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * This class is a special in configuration framework, extended by other framework classes. You do not want to extend
  * this class (most probably), but rather go for {@link AbstractLastingConfigurable} or
  * {@link AbstractRemovableConfigurable} class.
- * 
+ *
  * @author cstamas
  */
 public abstract class AbstractConfigurable<C>
-    extends AbstractLoggingComponent
+    extends ComponentSupport
     implements Configurable<C>
 {
 
   private EventBus eventBus;
-  
+
   private ApplicationConfiguration applicationConfiguration;
-  
+
   /**
    * The configuration
    */
@@ -53,22 +53,22 @@ public abstract class AbstractConfigurable<C>
    */
   public AbstractConfigurable() {
   }
-  
+
   /**
    * Constructor used by {@link AbstractLastingConfigurable}.
    */
   public AbstractConfigurable(final EventBus eventBus, final ApplicationConfiguration applicationConfiguration) {
     setEventBus(eventBus);
     setApplicationConfiguration(applicationConfiguration);
-    
+
     // init
     registerWithEventBus();
   }
-  
+
   protected void setEventBus(final EventBus eventBus) {
     this.eventBus = checkNotNull(eventBus);
   }
-  
+
   protected void setApplicationConfiguration(final ApplicationConfiguration applicationConfiguration) {
     this.applicationConfiguration = checkNotNull(applicationConfiguration);
   }
@@ -116,18 +116,6 @@ public abstract class AbstractConfigurable<C>
   }
 
   @Subscribe
-  public final void onEvent(final ConfigurationValidateEvent evt) {
-    try {
-      // validate
-      getCurrentCoreConfiguration().validateChanges();
-    }
-    catch (ConfigurationException e) {
-      // put a veto
-      evt.putVeto(this, e);
-    }
-  }
-
-  @Subscribe
   public final void onEvent(final ConfigurationCommitEvent evt) {
     try {
       commitChanges();
@@ -149,7 +137,7 @@ public abstract class AbstractConfigurable<C>
   }
 
   // Configurable iface
-  
+
   @Override
   public CoreConfiguration<C> getCurrentCoreConfiguration() {
     return coreConfiguration;

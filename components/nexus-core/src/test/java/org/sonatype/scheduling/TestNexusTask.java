@@ -17,25 +17,16 @@ import java.util.List;
 import java.util.Map;
 
 import org.sonatype.nexus.scheduling.NexusTask;
-import org.sonatype.nexus.scheduling.TaskActivityDescriptor;
 
 public class TestNexusTask
     extends AbstractSchedulerTask<Object>
     implements NexusTask<Object>
 {
 
-  private int runCount = 0;
-
-  public int getRunCount() {
-    return runCount;
-  }
-
   @Override
   public Object call()
       throws Exception
   {
-    runCount++;
-
     return null;
   }
 
@@ -61,11 +52,6 @@ public class TestNexusTask
 
   @Override
   public String getAlertEmail() {
-    return null;
-  }
-
-  @Override
-  public TaskActivityDescriptor getTaskActivityDescriptor() {
     return null;
   }
 

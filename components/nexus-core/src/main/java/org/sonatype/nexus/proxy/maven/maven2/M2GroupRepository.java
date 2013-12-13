@@ -25,7 +25,6 @@ import javax.enterprise.inject.Typed;
 import javax.inject.Inject;
 import javax.inject.Named;
 
-import org.sonatype.inject.Description;
 import org.sonatype.nexus.configuration.Configurator;
 import org.sonatype.nexus.configuration.model.CRepository;
 import org.sonatype.nexus.configuration.model.CRepositoryExternalConfigurationHolderFactory;
@@ -61,8 +60,8 @@ import org.sonatype.nexus.proxy.utils.RepositoryStringUtils;
 import org.sonatype.nexus.util.DigesterUtils;
 
 import org.apache.maven.artifact.repository.metadata.Metadata;
-import org.codehaus.plexus.util.IOUtil;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
+import org.eclipse.sisu.Description;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static org.sonatype.nexus.proxy.ItemNotFoundException.reasonFor;
@@ -161,16 +160,9 @@ public class M2GroupRepository
   private Metadata parseMetadata(StorageFileItem fileItem)
       throws IOException, MetadataException
   {
-    InputStream inputStream = null;
-
     Metadata metadata;
-    try {
-      inputStream = fileItem.getInputStream();
-
+    try (InputStream inputStream = fileItem.getInputStream()) {
       metadata = MetadataBuilder.read(inputStream);
-    }
-    finally {
-      IOUtil.close(inputStream);
     }
 
     MavenRepository repo = fileItem.getRepositoryItemUid().getRepository().adaptToFacet(MavenRepository.class);
@@ -239,7 +231,7 @@ public class M2GroupRepository
           existingMetadatas.add(parseMetadata(fileItem));
         }
         catch (IOException e) {
-          getLogger().warn(
+          log.warn(
               "IOException during parse of metadata UID=\"" + fileItem.getRepositoryItemUid().toString()
                   + "\", will be skipped from aggregation!", e);
 
@@ -248,7 +240,7 @@ public class M2GroupRepository
                   "Invalid metadata served by repository. If repository is proxy, please check out what is it serving!"));
         }
         catch (MetadataException e) {
-          getLogger().warn(
+          log.warn(
               "Metadata exception during parse of metadata from UID=\""
                   + fileItem.getRepositoryItemUid().toString() + "\", will be skipped from aggregation!", e);
 
@@ -278,7 +270,7 @@ public class M2GroupRepository
             MetadataBuilder.changeMetadataIgnoringFailures(result, ops);
         if (metadataExceptions != null && !metadataExceptions.isEmpty()) {
           for (final MetadataException metadataException : metadataExceptions) {
-            getLogger().warn(
+            log.warn(
                 "Ignored exception during M2 metadata merging: " + metadataException.getMessage()
                     + " (request " + request.getRequestPath() + ")", metadataException);
           }
@@ -303,8 +295,8 @@ public class M2GroupRepository
 
       resultOutputStream.close();
 
-      if (getLogger().isDebugEnabled()) {
-        getLogger().debug(
+      if (log.isDebugEnabled()) {
+        log.debug(
             "Item for path " + request.toString() + " merged from " + Integer.toString(items.size())
                 + " found items.");
       }

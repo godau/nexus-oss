@@ -36,13 +36,14 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.sonatype.nexus.util.file.DirSupport;
 import org.sonatype.timeline.TimelineCallback;
 import org.sonatype.timeline.TimelineConfiguration;
 import org.sonatype.timeline.TimelineRecord;
 import org.sonatype.timeline.proto.TimeLineRecordProtos;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.codehaus.plexus.util.IOUtil;
+import com.google.common.base.Throwables;
 
 /**
  * The class doing persitence of timeline records using Protobuf.
@@ -82,11 +83,16 @@ public class DefaultTimelinePersistor
    * in.
    */
   protected synchronized void setConfiguration(final TimelineConfiguration configuration) {
-    this.persistDirectory = configuration.getPersistDirectory();
-    if (!this.persistDirectory.exists()) {
-      this.persistDirectory.mkdirs();
+    if (!configuration.getPersistDirectory().exists()) {
+      try {
+        DirSupport.mkdir(configuration.getPersistDirectory().toPath());
+      }
+      catch (IOException e) {
+        Throwables.propagate(e);
+      }
     }
-    this.rollingIntervalMillis = configuration.getPersistRollingIntervalMillis();
+    persistDirectory = configuration.getPersistDirectory();
+    rollingIntervalMillis = configuration.getPersistRollingIntervalMillis();
   }
 
   /**
@@ -96,16 +102,11 @@ public class DefaultTimelinePersistor
       throws IOException
   {
     verify(records);
-    OutputStream out = null;
-    try {
-      out = new BufferedOutputStream(new FileOutputStream(getDataFile(), true));
+    try (OutputStream out = new BufferedOutputStream(new FileOutputStream(getDataFile(), true))) {
       for (TimelineRecord record : records) {
         toProto(record).writeDelimitedTo(out);
       }
       out.flush();
-    }
-    finally {
-      IOUtil.close(out);
     }
   }
 
@@ -234,9 +235,7 @@ public class DefaultTimelinePersistor
    */
   protected Iterator<TimelineRecord> readFile(File file) {
     final ArrayList<TimelineRecord> result = new ArrayList<TimelineRecord>();
-    InputStream in = null;
-    try {
-      in = new BufferedInputStream(new FileInputStream(file));
+    try (InputStream in = new BufferedInputStream(new FileInputStream(file))) {
       // V3 uses delimited format
       TimelineRecord rec = fromProto(TimeLineRecordProtos.TimeLineRecord.parseDelimitedFrom(in));
       while (rec != null) {
@@ -246,9 +245,6 @@ public class DefaultTimelinePersistor
     }
     catch (Exception e) {
       // just ignore it
-    }
-    finally {
-      IOUtil.close(in);
     }
 
     return result.iterator();

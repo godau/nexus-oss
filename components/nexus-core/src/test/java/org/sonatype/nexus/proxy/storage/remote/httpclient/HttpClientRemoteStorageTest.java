@@ -70,13 +70,16 @@ public class HttpClientRemoteStorageTest
       throws Exception
   {
     final HttpClientRemoteStorage underTest =
-        new HttpClientRemoteStorage(mock(UserAgentBuilder.class), mock(ApplicationStatusSource.class),
+        new HttpClientRemoteStorage(mock(ApplicationStatusSource.class),
             mock(MimeSupport.class), mock(QueryStringBuilder.class), mock(HttpClientManager.class));
+    final ProxyRepository proxyMock = mock(ProxyRepository.class);
+    when(proxyMock.getId()).thenReturn("id");
+    when(proxyMock.getRemoteStorageContext()).thenReturn(new DefaultRemoteStorageContext(null));
 
     thrown.expect(RemoteItemNotFoundException.class);
     thrown.expectMessage("not found in remote storage of repository");
 
-    underTest.retrieveItem(mock(ProxyRepository.class), new ResourceStoreRequest("bar/"), "http://foo.com");
+    underTest.retrieveItem(proxyMock, new ResourceStoreRequest("bar/"), "http://foo.com");
   }
 
   /**
@@ -88,13 +91,16 @@ public class HttpClientRemoteStorageTest
       throws Exception
   {
     final HttpClientRemoteStorage underTest =
-        new HttpClientRemoteStorage(mock(UserAgentBuilder.class), mock(ApplicationStatusSource.class),
+        new HttpClientRemoteStorage(mock(ApplicationStatusSource.class),
             mock(MimeSupport.class), mock(QueryStringBuilder.class), mock(HttpClientManager.class));
+    final ProxyRepository proxyMock = mock(ProxyRepository.class);
+    when(proxyMock.getId()).thenReturn("id");
+    when(proxyMock.getRemoteStorageContext()).thenReturn(new DefaultRemoteStorageContext(null));
 
     thrown.expect(RemoteItemNotFoundException.class);
     thrown.expectMessage("not found in remote storage of repository");
 
-    underTest.retrieveItem(mock(ProxyRepository.class), new ResourceStoreRequest("bar/?param=x/"),
+    underTest.retrieveItem(proxyMock, new ResourceStoreRequest("bar/?param=x/"),
         "http://foo.com");
   }
 
@@ -107,13 +113,16 @@ public class HttpClientRemoteStorageTest
       throws Exception
   {
     final HttpClientRemoteStorage underTest =
-        new HttpClientRemoteStorage(mock(UserAgentBuilder.class), mock(ApplicationStatusSource.class),
+        new HttpClientRemoteStorage(mock(ApplicationStatusSource.class),
             mock(MimeSupport.class), mock(QueryStringBuilder.class), mock(HttpClientManager.class));
+    final ProxyRepository proxyMock = mock(ProxyRepository.class);
+    when(proxyMock.getId()).thenReturn("id");
+    when(proxyMock.getRemoteStorageContext()).thenReturn(new DefaultRemoteStorageContext(null));
 
     thrown.expect(RemoteItemNotFoundException.class);
     thrown.expectMessage("not found in remote storage of repository");
 
-    underTest.retrieveItem(mock(ProxyRepository.class), new ResourceStoreRequest("bar/?param=x"),
+    underTest.retrieveItem(proxyMock, new ResourceStoreRequest("bar/?param=x"),
         "http://foo.com");
   }
 
@@ -127,7 +136,7 @@ public class HttpClientRemoteStorageTest
       throws Exception
   {
     final HttpClientRemoteStorage underTest =
-        new HttpClientRemoteStorage(mock(UserAgentBuilder.class), mock(ApplicationStatusSource.class),
+        new HttpClientRemoteStorage(mock(ApplicationStatusSource.class),
             mock(MimeSupport.class), mock(QueryStringBuilder.class), mock(HttpClientManager.class))
         {
           @Override
@@ -144,10 +153,11 @@ public class HttpClientRemoteStorageTest
           }
         };
 
-    final ProxyRepository repository = mock(ProxyRepository.class);
-    when(repository.getId()).thenReturn("foo");
+    final ProxyRepository proxyMock = mock(ProxyRepository.class);
+    when(proxyMock.getId()).thenReturn("foo");
+    when(proxyMock.getRemoteStorageContext()).thenReturn(new DefaultRemoteStorageContext(null));
 
-    underTest.retrieveItem(repository, new ResourceStoreRequest("bar?param=x"), "http://foo.com");
+    underTest.retrieveItem(proxyMock, new ResourceStoreRequest("bar?param=x"), "http://foo.com");
   }
 
   /**
@@ -180,7 +190,7 @@ public class HttpClientRemoteStorageTest
 
       // the RRS instance we test
       final HttpClientRemoteStorage underTest =
-          new HttpClientRemoteStorage(mock(UserAgentBuilder.class), mock(ApplicationStatusSource.class),
+          new HttpClientRemoteStorage(mock(ApplicationStatusSource.class),
               mock(MimeSupport.class), mock(QueryStringBuilder.class), new HttpClientManagerImpl(
               hc4Provider, mock(UserAgentBuilder.class)));
 

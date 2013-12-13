@@ -20,8 +20,8 @@ import javax.inject.Named;
 import javax.inject.Singleton;
 
 import org.sonatype.nexus.configuration.PasswordHelper;
-import org.sonatype.nexus.logging.AbstractLoggingComponent;
 import org.sonatype.plexus.components.cipher.PlexusCipherException;
+import org.sonatype.sisu.goodies.common.ComponentSupport;
 
 import com.thoughtworks.xstream.XStream;
 import org.codehaus.plexus.util.StringUtils;
@@ -31,7 +31,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @Singleton
 @Named
 public class DefaultConfigurationHelper
-    extends AbstractLoggingComponent
+    extends ComponentSupport
     implements ConfigurationHelper
 {
   private final PasswordHelper passwordHelper;
@@ -61,31 +61,12 @@ public class DefaultConfigurationHelper
     return copy;
   }
 
-  @Override
-  public Configuration maskPasswords(final Configuration config) {
-    if (null == config) {
-      return null;
-    }
-
-    final Configuration copy = clone(config);
-
-    handlePasswords(copy, false, true);
-
-    return copy;
-  }
-
   protected Configuration clone(final Configuration config) {
     // use Xstream
     return (Configuration) xstream.fromXML(xstream.toXML(config));
   }
 
   protected void handlePasswords(final Configuration config, final boolean encrypt, final boolean mask) {
-    if (config.getErrorReporting() != null
-        && StringUtils.isNotEmpty(config.getErrorReporting().getJiraPassword())) {
-      CErrorReporting errorConfig = config.getErrorReporting();
-      errorConfig.setJiraPassword(encryptDecryptPassword(errorConfig.getJiraPassword(), encrypt, mask));
-    }
-
     if (config.getSmtpConfiguration() != null
         && StringUtils.isNotEmpty(config.getSmtpConfiguration().getPassword())) {
       CSmtpConfiguration smtpConfig = config.getSmtpConfiguration();
@@ -130,7 +111,7 @@ public class DefaultConfigurationHelper
         return passwordHelper.encrypt(password);
       }
       catch (PlexusCipherException e) {
-        getLogger().error("Failed to encrypt password in nexus.xml.", e);
+        log.error("Failed to encrypt password in nexus.xml.", e);
       }
     }
     else {
@@ -138,7 +119,7 @@ public class DefaultConfigurationHelper
         return passwordHelper.decrypt(password);
       }
       catch (PlexusCipherException e) {
-        getLogger().error("Failed to decrypt password in nexus.xml.", e);
+        log.error("Failed to decrypt password in nexus.xml.", e);
       }
     }
 

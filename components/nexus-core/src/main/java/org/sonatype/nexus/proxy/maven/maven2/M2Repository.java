@@ -27,7 +27,6 @@ import javax.enterprise.inject.Typed;
 import javax.inject.Inject;
 import javax.inject.Named;
 
-import org.sonatype.inject.Description;
 import org.sonatype.nexus.configuration.Configurator;
 import org.sonatype.nexus.configuration.model.CRepository;
 import org.sonatype.nexus.configuration.model.CRepositoryExternalConfigurationHolderFactory;
@@ -59,12 +58,13 @@ import org.sonatype.nexus.proxy.repository.Repository;
 import org.sonatype.nexus.proxy.repository.RepositoryMetadataManager;
 import org.sonatype.nexus.util.AlphanumComparator;
 import org.sonatype.nexus.util.DigesterUtils;
+import org.sonatype.nexus.util.io.StreamSupport;
 
 import org.apache.maven.artifact.repository.metadata.Metadata;
 import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Reader;
 import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Writer;
-import org.codehaus.plexus.util.IOUtil;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
+import org.eclipse.sisu.Description;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -193,18 +193,13 @@ public class M2Repository
     // if the item is file, is M2 repository metadata and this repo is release-only or snapshot-only
     if (isCleanseRepositoryMetadata() && item instanceof StorageFileItem
         && M2ArtifactRecognizer.isMetadata(item.getPath())) {
-      InputStream orig = null;
       StorageFileItem mdFile = (StorageFileItem) item;
       ByteArrayInputStream backup = null;
       ByteArrayOutputStream backup1 = new ByteArrayOutputStream();
       try {
         // remote item is not reusable, and we usually cache remote stuff locally
-        try {
-          orig = mdFile.getInputStream();
-          IOUtil.copy(orig, backup1);
-        }
-        finally {
-          IOUtil.close(orig);
+        try (final InputStream orig = mdFile.getInputStream()) {
+          StreamSupport.copy(orig, backup1, StreamSupport.BUFFER_SIZE);
         }
         backup = new ByteArrayInputStream(backup1.toByteArray());
 
@@ -224,7 +219,7 @@ public class M2Repository
         mdFile.setContentLocator(new ByteArrayContentLocator(bos.toByteArray(), mdFile.getMimeType()));
       }
       catch (Exception e) {
-        getLogger().error("Exception during repository metadata cleansing.", e);
+        log.error("Exception during repository metadata cleansing.", e);
 
         if (backup != null) {
           // get backup and continue operation
@@ -343,13 +338,8 @@ public class M2Repository
 
         try {
           Metadata metadata;
-          InputStream inputStream = null;
-          try {
-            inputStream = mdItem.getInputStream();
+          try (final InputStream inputStream = mdItem.getInputStream()) {
             metadata = MetadataBuilder.read(inputStream);
-          }
-          finally {
-            IOUtil.close(inputStream); // Make sure we unlock mdItem ASAP
           }
 
           Version requiredVersion = getClientSupportedVersion(userAgent);
@@ -391,11 +381,11 @@ public class M2Repository
           return result;
         }
         catch (IOException e) {
-          if (getLogger().isDebugEnabled()) {
-            getLogger().error("Error parsing metadata, serving as retrieved", e);
+          if (log.isDebugEnabled()) {
+            log.error("Error parsing metadata, serving as retrieved", e);
           }
           else {
-            getLogger().error("Error parsing metadata, serving as retrieved: " + e.getMessage());
+            log.error("Error parsing metadata, serving as retrieved: " + e.getMessage());
           }
 
           return super.doRetrieveItem(request);

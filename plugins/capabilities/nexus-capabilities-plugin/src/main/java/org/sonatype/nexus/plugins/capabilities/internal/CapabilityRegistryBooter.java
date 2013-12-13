@@ -17,18 +17,18 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Provider;
 
-import org.sonatype.inject.EagerSingleton;
 import org.sonatype.nexus.proxy.events.NexusInitializedEvent;
 import org.sonatype.sisu.goodies.eventbus.EventBus;
 
 import com.google.common.eventbus.Subscribe;
+import org.eclipse.sisu.EagerSingleton;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Loads configuration when Nexus is initialized.
  *
- * @since 2.0
+ * @since capabilities 2.0
  */
 @Named
 @EagerSingleton

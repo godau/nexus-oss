@@ -33,8 +33,7 @@ import org.sonatype.nexus.proxy.item.RepositoryItemUid;
 import org.sonatype.nexus.proxy.item.StorageItem;
 import org.sonatype.nexus.proxy.repository.Repository;
 import org.sonatype.nexus.proxy.storage.local.fs.DefaultFSLocalRepositoryStorage;
-
-import org.codehaus.plexus.util.IOUtil;
+import org.sonatype.nexus.util.file.DirSupport;
 
 public class NexusUtils
 {
@@ -86,7 +85,8 @@ public class NexusUtils
       throws Exception
   {
     final DefaultStorageFileItem fItem =
-        new DefaultStorageFileItem(repository, request, true, true, new PreparedContentLocator(in, mimeType, ContentLocator.UNKNOWN_LENGTH));
+        new DefaultStorageFileItem(repository, request, true, true,
+            new PreparedContentLocator(in, mimeType, ContentLocator.UNKNOWN_LENGTH));
 
     if (userAttributes != null) {
       fItem.getRepositoryItemAttributes().putAll(userAttributes);
@@ -100,7 +100,7 @@ public class NexusUtils
   {
     final ResourceStoreRequest req = new ResourceStoreRequest(path);
 
-    req.getRequestContext().putAll(item.getItemContext());
+    req.getRequestContext().setParentContext(item.getItemContext());
 
     final DefaultStorageLinkItem link =
         new DefaultStorageLinkItem(repository, req, true, true, item.getRepositoryItemUid());
@@ -163,8 +163,8 @@ public class NexusUtils
   {
     File tempP2Repository;
     tempP2Repository = File.createTempFile("nexus-p2-repository-plugin", "");
-    tempP2Repository.delete();
-    tempP2Repository.mkdirs();
+    DirSupport.delete(tempP2Repository.toPath());
+    DirSupport.mkdir(tempP2Repository.toPath());
     return tempP2Repository;
   }
 
@@ -174,18 +174,13 @@ public class NexusUtils
                                        final String mimeType)
       throws Exception
   {
-    InputStream in = null;
-    try {
-      in = new FileInputStream(file);
+    try (InputStream in = new FileInputStream(file)) {
       final Map<String, String> attributes = new HashMap<String, String>();
       attributes.put(GENERATED_AT_ATTRIBUTE, new Date().toString());
 
       final ResourceStoreRequest request = new ResourceStoreRequest(path);
 
       storeItem(repository, request, in, mimeType, attributes);
-    }
-    finally {
-      IOUtil.close(in);
     }
   }
 
